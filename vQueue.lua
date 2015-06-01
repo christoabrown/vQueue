@@ -11,6 +11,9 @@ local hostWhisperQueue = {}
 local groups = {}
 local requestWhisperQueue = {}
 
+local vQueueFrame
+local vQueueFrameShown = false
+
 vQueue = AceLibrary("AceAddon-2.0"):new("AceHook-2.1")
 
 function addToSet(set, key)
@@ -66,7 +69,125 @@ end
 
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
+		vQueueFrame = CreateFrame("Frame", UIParent)
+		vQueueFrame:SetWidth(GetScreenWidth()/2.3)
+		vQueueFrame:SetHeight(vQueueFrame:GetWidth()/1.61803398875)
+		vQueueFrame:ClearAllPoints()
+		vQueueFrame:SetPoint("CENTER", UIParent,"CENTER") 
+		vQueueFrame:SetMovable(true)
+		vQueueFrame:EnableMouse(true)
+		vQueueFrame:SetClampedToScreen(true)
+		--vQueueFrame:RegisterForDrag("LeftButton")
+		--vQueueFrame:SetScript("OnDragStart", vQueueFrame.StartMoving)
+		--vQueueFrame:SetScript("OnDragStop", vQueueFrame.StopMovingOrSizing)
+		--vQueueFrame:StartMoving()
+		vQueueFrame:SetScript("OnMouseDown", function(self, button)
+			vQueueFrame:StartMoving()
+		end)
+		vQueueFrame:SetScript("OnMouseUp", function(self, button)
+			vQueueFrame:StopMovingOrSizing()
+		end)
+		
+		vQueueFrame.texture = vQueueFrame:CreateTexture(nil, "BACKGROUND")
+		--vQueueFrame.texture:SetTexture("Interface\\AddOns\\CustomNameplates\\barSmall")
+		vQueueFrame.texture:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
+		vQueueFrame.texture:SetVertexColor(0.2, 0.2, 0.2, 1)
+		vQueueFrame.texture:ClearAllPoints()
+		vQueueFrame.texture:SetPoint("CENTER", vQueueFrame, "CENTER")
+		vQueueFrame.texture:SetWidth(vQueueFrame:GetWidth())
+		vQueueFrame.texture:SetHeight(vQueueFrame:GetHeight())
+		
+		vQueueFrame.borderLeft = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderLeft:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Left")
+		vQueueFrame.borderLeft:ClearAllPoints()
+		vQueueFrame.borderLeft:SetPoint("LEFT", vQueueFrame, "LEFT", -5, -0.5)
+		vQueueFrame.borderLeft:SetWidth(20)
+		vQueueFrame.borderLeft:SetHeight(vQueueFrame:GetHeight()-31)
+		
+		vQueueFrame.borderRight = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderRight:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Right")
+		vQueueFrame.borderRight:ClearAllPoints()
+		vQueueFrame.borderRight:SetPoint("RIGHT", vQueueFrame, "RIGHT", 5, -0.5)
+		vQueueFrame.borderRight:SetWidth(20)
+		vQueueFrame.borderRight:SetHeight(vQueueFrame:GetHeight()-31)
+		
+		vQueueFrame.borderBot = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderBot:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Bottom")
+		vQueueFrame.borderBot:ClearAllPoints()
+		vQueueFrame.borderBot:SetPoint("BOTTOM", vQueueFrame, "BOTTOM", -0.5, -5)
+		vQueueFrame.borderBot:SetWidth(vQueueFrame:GetWidth()-31.5)
+		vQueueFrame.borderBot:SetHeight(20)
+		
+		vQueueFrame.borderTop = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderTop:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Top")
+		vQueueFrame.borderTop:ClearAllPoints()
+		vQueueFrame.borderTop:SetPoint("TOP", vQueueFrame, "TOP", 0, 4)
+		vQueueFrame.borderTop:SetWidth(vQueueFrame:GetWidth()-30)
+		vQueueFrame.borderTop:SetHeight(20)
+		
+		vQueueFrame.borderTopLeft = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderTopLeft:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-TopLeft")
+		vQueueFrame.borderTopLeft:ClearAllPoints()
+		vQueueFrame.borderTopLeft:SetVertexColor(1, 1, 1, 1)
+		vQueueFrame.borderTopLeft:SetPoint("TOPLEFT", vQueueFrame, "TOPLEFT", -5, 4)
+		vQueueFrame.borderTopLeft:SetWidth(20)
+		vQueueFrame.borderTopLeft:SetHeight(20)
+		
+		vQueueFrame.borderTopRight = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderTopRight:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-TopRight")
+		vQueueFrame.borderTopRight:ClearAllPoints()
+		vQueueFrame.borderTopRight:SetVertexColor(1, 1, 1, 1)
+		vQueueFrame.borderTopRight:SetPoint("TOPRIGHT", vQueueFrame, "TOPRIGHT", 5, 4)
+		vQueueFrame.borderTopRight:SetWidth(20)
+		vQueueFrame.borderTopRight:SetHeight(20)
+		
+		vQueueFrame.borderBottomLeft = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderBottomLeft:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-BottomLeft")
+		vQueueFrame.borderBottomLeft:ClearAllPoints()
+		vQueueFrame.borderBottomLeft:SetVertexColor(1, 1, 1, 1)
+		vQueueFrame.borderBottomLeft:SetPoint("BOTTOMLEFT", vQueueFrame, "BOTTOMLEFT", -5, -5)
+		vQueueFrame.borderBottomLeft:SetWidth(20)
+		vQueueFrame.borderBottomLeft:SetHeight(20)
+		
+		vQueueFrame.borderBottomRight = vQueueFrame:CreateTexture(nil, "BORDER")
+		vQueueFrame.borderBottomRight:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-BottomRight")
+		vQueueFrame.borderBottomRight:ClearAllPoints()
+		vQueueFrame.borderBottomRight:SetVertexColor(1, 1, 1, 1)
+		vQueueFrame.borderBottomRight:SetPoint("BOTTOMRIGHT", vQueueFrame, "BOTTOMRIGHT", 3.75, -5)
+		vQueueFrame.borderBottomRight:SetWidth(20)
+		vQueueFrame.borderBottomRight:SetHeight(20)
+			
+		local MinimapPos = -30
 		DEFAULT_CHAT_FRAME:AddMessage("Loaded " .. arg1)
+		minimapButton = CreateFrame("Button", "vQueueMap", Minimap)
+		minimapButton:SetFrameStrata("HIGH")
+		minimapButton:SetWidth(20)
+		minimapButton:SetHeight(20)
+		minimapButton:ClearAllPoints()
+		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",52-(75*cos(MinimapPos)),(75*sin(MinimapPos))-52) 
+		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
+		minimapButton.texture:SetTexture(1, 1, 1, 1)
+		minimapButton.texture:ClearAllPoints()
+		minimapButton.texture:SetPoint("CENTER", minimapButton, "CENTER")
+		minimapButton.texture:SetWidth(minimapButton:GetWidth())
+		minimapButton.texture:SetHeight(minimapButton:GetHeight())
+
+		
+		minimapButton:SetScript("OnMouseDown", function(self, button)
+			if vQueueFrameShown then 
+				vQueueFrame:Hide() 
+				vQueueFrameShown = false
+			else
+				vQueueFrame:Show() 
+				vQueueFrameShown = true
+			end
+			minimapButton.texture:SetTexture(0, 0, 0, 1)
+		end);
+		minimapButton:SetScript("OnMouseUp", function(self, button)
+			minimapButton.texture:SetTexture(1, 1, 1, 1)
+		end);
+		minimapButton:Show()
+		vQueueFrame:Hide()
 	end
 	if event == "CHAT_MSG_CHANNEL" then
 		--DEFAULT_CHAT_FRAME:AddMessage("test " .. arg9)
