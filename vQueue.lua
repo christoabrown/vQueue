@@ -11,8 +11,11 @@ local hostWhisperQueue = {}
 local groups = {}
 local requestWhisperQueue = {}
 
-local vQueueFrame
+local vQueueFrame = {}
+local catListButtons = {}
 local vQueueFrameShown = false
+
+local categories = {}
 
 vQueue = AceLibrary("AceAddon-2.0"):new("AceHook-2.1")
 
@@ -26,6 +29,24 @@ end
 
 function setContains(set, key)
     return set[key] ~= nil
+end
+
+function tablelength(T)
+  local count = 0
+  for _ in pairs(T) do count = count + 1 end
+  return count
+end
+
+function round(num)
+    under = math.floor(num)
+    upper = math.floor(num) + 1
+    underV = -(under - num)
+    upperV = upper - num
+    if (upperV > underV) then
+        return under
+    else
+        return upper
+    end
 end
 
 function split(pString, pPattern)
@@ -69,6 +90,22 @@ end
 
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
+	
+		categories["Dungeons"] = 
+		{
+			expanded = false,
+			"Deadmines:dm",
+			"Ragefire Chasm:rfc"
+		
+		}
+		categories["Raids"] =
+		{
+			expanded = false,
+			"Molten Core:mc",
+			"Onyxia's Lair:ony"
+		
+		}
+		
 		vQueueFrame = CreateFrame("Frame", UIParent)
 		vQueueFrame:SetWidth(GetScreenWidth()/2.3)
 		vQueueFrame:SetHeight(vQueueFrame:GetWidth()/1.61803398875)
@@ -76,7 +113,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame:SetPoint("CENTER", UIParent,"CENTER") 
 		vQueueFrame:SetMovable(true)
 		vQueueFrame:EnableMouse(true)
-		vQueueFrame:SetClampedToScreen(true)
+		--vQueueFrame:SetClampedToScreen(true)
 		--vQueueFrame:RegisterForDrag("LeftButton")
 		--vQueueFrame:SetScript("OnDragStart", vQueueFrame.StartMoving)
 		--vQueueFrame:SetScript("OnDragStop", vQueueFrame.StopMovingOrSizing)
@@ -156,7 +193,95 @@ function vQueue_OnEvent(event)
 		vQueueFrame.borderBottomRight:SetPoint("BOTTOMRIGHT", vQueueFrame, "BOTTOMRIGHT", 3.75, -5)
 		vQueueFrame.borderBottomRight:SetWidth(20)
 		vQueueFrame.borderBottomRight:SetHeight(20)
-			
+		
+		vQueueFrame.catList = CreateFrame("Frame", vQueueFrame)
+		vQueueFrame.catList:ClearAllPoints()
+		vQueueFrame.catList:SetPoint("LEFT", vQueueFrame, "LEFT", 5, -5)
+		vQueueFrame.catList:SetWidth(vQueueFrame:GetWidth() * 1/5)
+		vQueueFrame.catList:SetHeight(vQueueFrame:GetHeight() - (vQueueFrame:GetHeight()*0.05))
+		
+		vQueueFrame.catListBg = vQueueFrame.catList:CreateTexture(nil, "BACKGROUND")
+		vQueueFrame.catListBg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
+		vQueueFrame.catListBg:ClearAllPoints()
+		vQueueFrame.catListBg:SetVertexColor(1, 1, 1, 1)
+		vQueueFrame.catListBg:SetPoint("CENTER", vQueueFrame.catList, "CENTER")
+		vQueueFrame.catListBg:SetWidth(vQueueFrame.catList:GetWidth())
+		vQueueFrame.catListBg:SetHeight(vQueueFrame.catList:GetHeight())
+		
+		vQueueFrame.catListborderLeft = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderLeft:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Left")
+		vQueueFrame.catListborderLeft:ClearAllPoints()
+		vQueueFrame.catListborderLeft:SetPoint("LEFT", vQueueFrame.catList, "LEFT", -2, 0)
+		vQueueFrame.catListborderLeft:SetWidth(10)
+		vQueueFrame.catListborderLeft:SetHeight(vQueueFrame.catList:GetHeight()-13)
+		
+		vQueueFrame.catListborderRight = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderRight:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Right")
+		vQueueFrame.catListborderRight:ClearAllPoints()
+		vQueueFrame.catListborderRight:SetPoint("RIGHT", vQueueFrame.catList, "RIGHT", 3, 0)
+		vQueueFrame.catListborderRight:SetWidth(10)
+		vQueueFrame.catListborderRight:SetHeight(vQueueFrame.catList:GetHeight()-13)
+		
+		vQueueFrame.catListborderTop = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderTop:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Top")
+		vQueueFrame.catListborderTop:ClearAllPoints()
+		vQueueFrame.catListborderTop:SetPoint("TOP", vQueueFrame.catList, "TOP", 0, 2)
+		vQueueFrame.catListborderTop:SetWidth(vQueueFrame.catList:GetWidth() - 13)
+		vQueueFrame.catListborderTop:SetHeight(10)
+		
+		vQueueFrame.catListborderBot = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderBot:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-Bottom")
+		vQueueFrame.catListborderBot:ClearAllPoints()
+		vQueueFrame.catListborderBot:SetPoint("BOTTOM", vQueueFrame.catList, "BOTTOM", 0, -2)
+		vQueueFrame.catListborderBot:SetWidth(vQueueFrame.catList:GetWidth() - 13)
+		vQueueFrame.catListborderBot:SetHeight(10)
+		
+		vQueueFrame.catListborderTopRight = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderTopRight:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-TopRight")
+		vQueueFrame.catListborderTopRight:ClearAllPoints()
+		vQueueFrame.catListborderTopRight:SetPoint("TOPRIGHT", vQueueFrame.catList, "TOPRIGHT", 3, 2)
+		vQueueFrame.catListborderTopRight:SetWidth(10)
+		vQueueFrame.catListborderTopRight:SetHeight(10)
+		
+		vQueueFrame.catListborderTopLeft = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderTopLeft:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-TopLeft")
+		vQueueFrame.catListborderTopLeft:ClearAllPoints()
+		vQueueFrame.catListborderTopLeft:SetPoint("TOPLEFT", vQueueFrame.catList, "TOPLEFT", -2, 2)
+		vQueueFrame.catListborderTopLeft:SetWidth(10)
+		vQueueFrame.catListborderTopLeft:SetHeight(10)
+		
+		vQueueFrame.catListborderBotRight = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderBotRight:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-BottomRight")
+		vQueueFrame.catListborderBotRight:ClearAllPoints()
+		vQueueFrame.catListborderBotRight:SetPoint("BOTTOMRIGHT", vQueueFrame.catList, "BOTTOMRIGHT", 2.4, -2)
+		vQueueFrame.catListborderBotRight:SetWidth(10)
+		vQueueFrame.catListborderBotRight:SetHeight(10)
+		
+		vQueueFrame.catListborderBotLeft = vQueueFrame.catList:CreateTexture(nil, "BORDER")
+		vQueueFrame.catListborderBotLeft:SetTexture("Interface\\AddOns\\vQueue\\ThinBorder-BottomLeft")
+		vQueueFrame.catListborderBotLeft:ClearAllPoints()
+		vQueueFrame.catListborderBotLeft:SetPoint("BOTTOMLEFT", vQueueFrame.catList, "BOTTOMLEFT", -2, -2)
+		vQueueFrame.catListborderBotLeft:SetWidth(10)
+		vQueueFrame.catListborderBotLeft:SetHeight(10)
+		
+		--vQueueFrame.catListborderLeft = vQueueFrame:CreateTexture(nil, "BORDER")
+		--vQueueFrame.catListborderLeft:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
+		--vQueueFrame.catListborderLeft:ClearAllPoints()
+		--vQueueFrame.catListborderLeft:SetVertexColor(1, 1, 1, 1)
+		--vQueueFrame.catListborderLeft:SetPoint("LEFT", vQueueFrame, "LEFT", 0, 0)
+		--vQueueFrame.catListborderLeft:SetWidth(20)
+		--vQueueFrame.catListborderLeft:SetHeight(vQueueFrame:GetHeight() - (vQueueFrame:GetHeight()*0.05))
+		
+		vQueueFrame.title = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
+		vQueueFrame.title:ClearAllPoints()
+		--vQueueFrame.button:SetVertexColor(1, 1, 1, 1)
+		vQueueFrame.title:SetPoint("CENTER", vQueueFrame.catList, "TOP", 0 , 5)
+		vQueueFrame.title:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.title:SetText("Categories")
+		vQueueFrame.title:SetTextColor(0.85, 0.85, 0)
+		vQueueFrame.title:SetWidth(20)
+		vQueueFrame.title:SetHeight(20)
+		
 		local MinimapPos = -30
 		DEFAULT_CHAT_FRAME:AddMessage("Loaded " .. arg1)
 		minimapButton = CreateFrame("Button", "vQueueMap", Minimap)
@@ -171,14 +296,105 @@ function vQueue_OnEvent(event)
 		minimapButton.texture:SetPoint("CENTER", minimapButton, "CENTER")
 		minimapButton.texture:SetWidth(minimapButton:GetWidth())
 		minimapButton.texture:SetHeight(minimapButton:GetHeight())
+		
+		vQueueFrame.catList:SetScript("OnShow", function(self)
+			for key, value in pairs(categories) do
+				local frameExists = false
+				local textKey = key
+				for k, v in pairs(catListButtons)  do
+					if string.sub(v:GetText(), 3, -1) == key then
+						frameExists = true
+						--DEFAULT_CHAT_FRAME:AddMessage("exists")
+					end
+				end
+				if not frameExists then
+					catListButtons[tablelength(catListButtons)] = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
+					catListButtons[tablelength(catListButtons)-1]:SetFont("Fonts\\FRIZQT__.TTF", 10)
+					catListButtons[tablelength(catListButtons)-1]:SetText("+ " .. textKey)
+					catListButtons[tablelength(catListButtons)-1]:SetTextColor(1, 1, 1)
+					catListButtons[tablelength(catListButtons)-1]:SetHighlightTextColor(1, 1, 0)
+					catListButtons[tablelength(catListButtons)-1]:SetPushedTextOffset(0,0)
+					catListButtons[tablelength(catListButtons)-1]:SetWidth(catListButtons[tablelength(catListButtons)-1]:GetTextWidth())
+					catListButtons[tablelength(catListButtons)-1]:SetHeight(10)
+					catListButtons[tablelength(catListButtons)-1]:SetPoint("RIGHT", vQueueFrame.catList, "TOPLEFT",  round(catListButtons[tablelength(catListButtons)-1]:GetTextWidth()), -(tablelength(catListButtons)*10))
+					catListButtons[tablelength(catListButtons)-1]:SetScript("OnMouseDown", function(self, button)
+						local keyPressed = string.sub(this:GetText(), 3, -1)
+						--DEFAULT_CHAT_FRAME:AddMessage(keyPressed)
+						if not categories[keyPressed][0] then
+							this:SetText("- " .. keyPressed)
+							categories[keyPressed][0] = true
+							vQueueFrame.catList:Hide()
+							vQueueFrame.catList:Show()
+						else
+							this:SetText("+ " .. keyPressed)
+							categories[keyPressed][0] = false
+							for k, v in pairs(catListButtons) do
+								local deletingIndex = -1
+								if this:GetText() == v:GetText() then
+									DEFAULT_CHAT_FRAME:AddMessage("test")
+									deletingIndex = tablelength(categories[string.sub(v:GetText(), 3, -1)]) - 1
+									DEFAULT_CHAT_FRAME:AddMessage(tostring(deletingIndex))
+								end
+								--if deletingIndex ~= -1 and setContains(categories, string.sub(v:GetText(), 3, -1)) then
+								--	DEFAULT_CHAT_FRAME:AddMessage("test2")
+								--	deletingIndex = -1
+								--end
+								for i = deletingIndex, 1, -1 do
+									DEFAULT_CHAT_FRAME:AddMessage("test3")
+									catListButtons[k+1]:Hide()
+									table.remove(catListButtons, k+1)
+								end
+							end
+							vQueueFrame.catList:Hide()
+							vQueueFrame.catList:Show()
+						end
+					end)
+				end
+				if categories[key][0] then
+					for keyy, valuee in pairs(categories[key]) do
+						local frameExistss = false
+						for k, v in pairs(catListButtons)  do
+							if v:GetText() == valuee then
+								frameExistss = true
+								--DEFAULT_CHAT_FRAME:AddMessage("exists")
+							end
+						end
+						if type(valuee) == "string" and not frameExistss then
+							local dropedItemFrame = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
+							dropedItemFrame:SetFont("Fonts\\FRIZQT__.TTF", 8)
+							dropedItemFrame:SetText(valuee)
+							dropedItemFrame:SetTextColor(0.8, 0.8, 0.8)
+							dropedItemFrame:SetHighlightTextColor(1, 1, 0)
+							dropedItemFrame:SetWidth(dropedItemFrame:GetTextWidth())
+							dropedItemFrame:SetHeight(8)
+							dropedItemFrame:SetPoint("RIGHT", vQueueFrame.catList, "TOPLEFT",  round(dropedItemFrame:GetTextWidth()), -(tablelength(catListButtons)*10))
+							local tablePos = 0
+							for k, v in pairs(catListButtons) do
+								
+								if string.sub(v:GetText(), 3, -1) == key then
+									tablePos = k
+								end
+							end
+							table.insert(catListButtons, tablePos+1, dropedItemFrame)
+						end
+					end
+				end
+				for k, v in pairs(catListButtons) do
+					v:ClearAllPoints()
+					v:SetPoint("RIGHT", vQueueFrame.catList, "TOPLEFT",  v:GetTextWidth(), -((k+1)*10))
+				end
+			end
+		end)
 
 		
 		minimapButton:SetScript("OnMouseDown", function(self, button)
 			if vQueueFrameShown then 
 				vQueueFrame:Hide() 
+				vQueueFrame.catList:Hide()
 				vQueueFrameShown = false
 			else
 				vQueueFrame:Show() 
+				vQueueFrame.catList:Show()
 				vQueueFrameShown = true
 			end
 			minimapButton.texture:SetTexture(0, 0, 0, 1)
@@ -188,6 +404,7 @@ function vQueue_OnEvent(event)
 		end);
 		minimapButton:Show()
 		vQueueFrame:Hide()
+		vQueueFrame.catList:Hide()
 	end
 	if event == "CHAT_MSG_CHANNEL" then
 		--DEFAULT_CHAT_FRAME:AddMessage("test " .. arg9)
