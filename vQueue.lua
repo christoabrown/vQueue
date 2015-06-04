@@ -1366,6 +1366,7 @@ function vQueue_OnEvent(event)
 			DEFAULT_CHAT_FRAME:AddMessage(args[1] .. " : " .. args[2])
 			if args[1] == "lfg" and args[2] ~= nil and UnitName("player") ~= arg2 then
 				if hostedCategory == args[2] and not setContains(hostWhisperQueue, arg2) and not setContains(playersQueued, arg2) then
+					DEFAULT_CHAT_FRAME:AddMessage("added")
 					addToSet(hostWhisperQueue, arg2)
 				end
 			end		
@@ -1453,6 +1454,7 @@ function vQueue_OnUpdate()
 			--host whispers to players lfg
 			elseif next(hostWhisperQueue) ~= nil and isHost then
 				for key,value in pairs(hostWhisperQueue) do 
+					DEFAULT_CHAT_FRAME:AddMessage("whisp")
 					SendChatMessage("vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " :" .. tostring(hostOptions[0]), "WHISPER", nil , key);
 					removeFromSet(hostWhisperQueue, key)
 				end
