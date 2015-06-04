@@ -1357,12 +1357,13 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistCreateButton:Hide()
 	end
 	if event == "CHAT_MSG_CHANNEL" then
+		DEFAULT_CHAT_FRAME:AddMessage(arg9 .. ":" channelName)
 		if arg9 == channelName then
 			local args = {}
 			if arg1 ~= nil then
 				args = split(arg1, "\%s")
 			end
-			if next(args) == nil then return end
+			DEFAULT_CHAT_FRAME:AddMessage(args[1] .. " : " .. args[2])
 			if args[1] == "lfg" and args[2] ~= nil and UnitName("player") ~= arg2 then
 				if hostedCategory == args[2] and not setContains(hostWhisperQueue, arg2) and not setContains(playersQueued, arg2) then
 					addToSet(hostWhisperQueue, arg2)
