@@ -1357,7 +1357,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistCreateButton:Hide()
 	end
 	if event == "CHAT_MSG_CHANNEL" then
-		DEFAULT_CHAT_FRAME:AddMessage(arg9 .. ":" channelName)
+		DEFAULT_CHAT_FRAME:AddMessage(arg9 .. ":" .. channelName)
 		if arg9 == channelName then
 			local args = {}
 			if arg1 ~= nil then
