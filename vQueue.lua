@@ -1368,7 +1368,7 @@ function vQueue_OnEvent(event)
 				vQueueArgs = split(arg1, "\%s")
 			end
 			DEFAULT_CHAT_FRAME:AddMessage(vQueueArgs[1] .. " : " .. vQueueArgs[2])
-			if vQueueArgs[1] == "lfg" and vQueueArgs[2] ~= nil and UnitName("player") ~= arg2 then
+			if vQueueArgs[1] == "lfg" and vQueueArgs[2] ~= nil then
 				DEFAULT_CHAT_FRAME:AddMessage("added1")
 				if hostedCategory == vQueueArgs[2] and not setContains(hostWhisperQueue, arg2) and not setContains(playersQueued, arg2) then
 					DEFAULT_CHAT_FRAME:AddMessage("added2")
