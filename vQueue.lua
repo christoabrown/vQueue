@@ -1362,7 +1362,8 @@ function vQueue_OnEvent(event)
 	end
 	if event == "CHAT_MSG_CHANNEL" then
 		DEFAULT_CHAT_FRAME:AddMessage(arg9 .. ":" .. channelName)
-		if arg9 == channelName then
+		if string.lower(arg9) == string.lower(channelName) then
+			DEFAULT_CHAT_FRAME:AddMessage("added0")
 			local vQueueArgs = {}
 			if arg1 ~= nil then
 				vQueueArgs = split(arg1, "\%s")
