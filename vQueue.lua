@@ -882,16 +882,20 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistTopSection, "BOTTOMRIGHT", -vQueueFrame.hostlistHostButton:GetWidth() - 10, 5)
 		vQueueFrame.hostlistFindButton:SetFont("Fonts\\FRIZQT__.TTF", 10)
 		vQueueFrame.hostlistFindButton:SetText("Find")
+		--vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", true)
 		vQueueFrame.hostlistFindButton:SetTextColor(209/255, 164/255, 29/255)
 		vQueueFrame.hostlistFindButton:SetWidth(vQueueFrame.hostlistFindButton:GetTextWidth()+5)
 		vQueueFrame.hostlistFindButton:SetHeight(vQueueFrame.hostlistFindButton:GetTextHeight()+3)
 		vQueueFrame.hostlistFindButton:SetScript("OnMouseDown", function()
+			vQueueFrame.hostlistFindButton:SetButtonState("PUSHED", false)
 			isFinding = true
 			vQueue_SlashCommandHandler( "lfg " .. selectedQuery )
-			this:Hide()
-			--vQueue_SlashCommandHandler( "host " .. selectedQuery )
 			vQueueFrame.hostlist:Hide()
 			vQueueFrame.hostlist:Show()
+		end)
+		vQueueFrame.hostlistFindButton:SetScript("OnLeave", function()
+			vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", false)
+			--vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", true)
 		end)
 		
 		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist )
@@ -1359,14 +1363,15 @@ function vQueue_OnEvent(event)
 	if event == "CHAT_MSG_CHANNEL" then
 		DEFAULT_CHAT_FRAME:AddMessage(arg9 .. ":" .. channelName)
 		if arg9 == channelName then
-			local args = {}
+			local vQueueArgs = {}
 			if arg1 ~= nil then
-				args = split(arg1, "\%s")
+				vQueueArgs = split(arg1, "\%s")
 			end
-			DEFAULT_CHAT_FRAME:AddMessage(args[1] .. " : " .. args[2])
-			if args[1] == "lfg" and args[2] ~= nil and UnitName("player") ~= arg2 then
-				if hostedCategory == args[2] and not setContains(hostWhisperQueue, arg2) and not setContains(playersQueued, arg2) then
-					DEFAULT_CHAT_FRAME:AddMessage("added")
+			DEFAULT_CHAT_FRAME:AddMessage(vQueueArgs[1] .. " : " .. vQueueArgs[2])
+			if vQueueArgs[1] == "lfg" and vQueueArgs[2] ~= nil and UnitName("player") ~= arg2 then
+				DEFAULT_CHAT_FRAME:AddMessage("added1")
+				if hostedCategory == vQueueArgs[2] and not setContains(hostWhisperQueue, arg2) and not setContains(playersQueued, arg2) then
+					DEFAULT_CHAT_FRAME:AddMessage("added2")
 					addToSet(hostWhisperQueue, arg2)
 				end
 			end		
@@ -1418,6 +1423,7 @@ function vQueue_SlashCommandHandler( msg )
 	if args[1] == "host" and args[2] ~= nil then
 		isHost = true
 		hostedCategory = args[2]
+		DEFAULT_CHAT_FRAME:AddMessage("Now hosting for " .. hostedCategory)
 	elseif args[1] == "lfg" and args[2] ~= nil then
 		if not setContains(chatQueue, args[2]) then
 			addToSet(chatQueue, "lfg " .. args[2])
