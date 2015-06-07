@@ -282,22 +282,12 @@ function vQueue_OnEvent(event)
 		vQueueFrame.borderBottomRight:SetWidth(20)
 		vQueueFrame.borderBottomRight:SetHeight(20)
 		
-		--vQueueFrame.scrollframe = CreateFrame("ScrollFrame", nil, vQueueFrame) 
-		--vQueueFrame.scrollframe:SetPoint("LEFT", vQueueFrame, "LEFT", 5, -5) 
-		--vQueueFrame.scrollframe:SetWidth((vQueueFrame:GetWidth()) * 1/5)
-		--vQueueFrame.scrollframe:SetHeight((vQueueFrame:GetHeight()) - (vQueueFrame:GetHeight()*0.05))
-		
-		--vQueueFrame.scrollframebg = vQueueFrame.scrollframe:CreateTexture() 
-		--vQueueFrame.scrollframebg:SetTexture(.5,.5,.5,.5) 
-		--vQueueFrame.scrollframebg:SetAllPoints()
-		
 		vQueueFrame.catList = CreateFrame("ScrollFrame", vQueueFrame)
 		vQueueFrame.catList:ClearAllPoints()
 		vQueueFrame.catList:SetPoint("LEFT", vQueueFrame, "LEFT", 5, -5)
 		vQueueFrame.catList:SetWidth(vQueueFrame:GetWidth() * 1/5)
 		vQueueFrame.catList:SetHeight(vQueueFrame:GetHeight() - (vQueueFrame:GetHeight()*0.05))
 		vQueueFrame.catList:EnableMouseWheel(true)
-		--vQueueFrame.catList:SetFrameLevel(2)
 		vQueueFrame.catList:SetScript("OnMouseWheel", function()
 			if arg1 == 1 then
 				scrollbarCat:SetValue(scrollbarCat:GetValue()-1)
@@ -306,10 +296,7 @@ function vQueue_OnEvent(event)
 			end
 		end)
 		
-		--vQueueFrame.scrollframe:SetScrollChild(vQueueFrame.catList)
-		
 		vQueueFrame.catListBg = vQueueFrame.catList:CreateTexture(nil, "BACKGROUND")
-		--vQueueFrame.catListBg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
 		vQueueFrame.catListBg:ClearAllPoints()
 		vQueueFrame.catListBg:SetVertexColor(1, 1, 1, 1)
 		vQueueFrame.catListBg:SetPoint("CENTER", vQueueFrame.catList, "CENTER")
@@ -572,7 +559,6 @@ function vQueue_OnEvent(event)
 					else
 						hostListButtonBg:SetTexture(0.2, 0.2, 0.2, 0.1)
 					end
-					--hostListButtons[tablelength(hostListButtons)-1]:SetPoint("RIGHT", vQueueFrame.hostlist, "TOPLEFT",  round(hostListButtons[tablelength(hostListButtons)-1]:GetTextWidth()), -(tablelength(hostListButtons)*10) - 20)
 					for i, item in pairs(args) do
 						local colorr = 247/255
 						local colorg = 235/255
@@ -707,7 +693,6 @@ function vQueue_OnEvent(event)
 		hostListFrame = vQueueFrame.hostlist
 		
 		vQueueFrame.hostlistBg = vQueueFrame.hostlist:CreateTexture(nil, "BACKGROUND")
-		--vQueueFrame.hostlistBg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
 		vQueueFrame.hostlistBg:ClearAllPoints()
 		vQueueFrame.hostlistBg:SetPoint("CENTER", vQueueFrame.hostlist, "CENTER")
 		vQueueFrame.hostlistBg:SetWidth(vQueueFrame.hostlist:GetWidth())
@@ -1103,7 +1088,6 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistTopSection, "BOTTOMRIGHT", -vQueueFrame.hostlistHostButton:GetWidth() - 10, 5)
 		vQueueFrame.hostlistFindButton:SetFont("Fonts\\FRIZQT__.TTF", 10)
 		vQueueFrame.hostlistFindButton:SetText("Find")
-		--vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", true)
 		vQueueFrame.hostlistFindButton:SetTextColor(209/255, 164/255, 29/255)
 		vQueueFrame.hostlistFindButton:SetWidth(vQueueFrame.hostlistFindButton:GetTextWidth()+5)
 		vQueueFrame.hostlistFindButton:SetHeight(vQueueFrame.hostlistFindButton:GetTextHeight()+3)
@@ -1129,7 +1113,6 @@ function vQueue_OnEvent(event)
 		end)
 		vQueueFrame.hostlistFindButton:SetScript("OnLeave", function()
 			vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", false)
-			--vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", true)
 		end)
 		
 		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist )
@@ -1534,7 +1517,6 @@ function vQueue_OnEvent(event)
 							dropedItemFrame:SetText(args[1])
 							dropedItemFrame:SetTextColor(204/255, 159/255, 24/255)
 							dropedItemFrame:SetHighlightTextColor(1,1,0)
-							--dropedItemFrame:SetPushedTextOffset(1,1)
 							dropedItemFrame:SetWidth(dropedItemFrame:GetTextWidth())
 							dropedItemFrame:SetHeight(8)
 							dropedItemFrame:SetFrameLevel(1)
@@ -1562,7 +1544,6 @@ function vQueue_OnEvent(event)
 									vQueueFrame.topsectiontitle:SetWidth(vQueueFrame.topsectiontitle:GetTextWidth())
 									vQueueFrame.topsectiontitle:SetHeight(vQueueFrame.topsectiontitle:GetTextHeight())
 								end
-								--vQueueFrame.hostlistTopSectionBg:SetTexture(0.3, 0.3, 0.3, 0.3)
 								if not vQueueFrame.hostlistTopSectionBg:SetTexture("Interface\\AddOns\\vQueue\\media\\" .. args[2]) then
 									vQueueFrame.hostlistTopSectionBg:SetTexture(0, 0, 0, 0)
 								end
