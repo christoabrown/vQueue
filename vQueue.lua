@@ -1,4 +1,4 @@
-local chatRate = 3 -- limit to 3 msg/sec
+local chatRate = 2 -- limit to 3 msg/sec
 local startTime = 0 -- used to get elapsed in onupdate
 local channelName = "vQueue"
 local filterEnabled = true -- chat filter
@@ -21,7 +21,12 @@ local hostListButtons = {}
 local hostListFrame
 local infoFrame = {}
 local catListHidden = {}
+local catListHiddenBot = {}
 local waitingList = {}
+local realScroll = false
+local recentList = {}
+local blackList = {}
+local findTimer = 0
 
 local tankSelected = false
 local healerSelected = false
@@ -87,7 +92,11 @@ function vQueue:OnInitialize()
 end
 
 function vQueue:AddMessage(frame, text, r, g, b, id)
-	if (strfind(tostring(text), tostring(GetChannelName(channelName)) .. ".") and filterEnabled) or strfind(tostring(text), "vqgroup") or strfind(tostring(text), "vqrequest") or strfind(tostring(text), "vqaccept") or strfind(tostring(text), "vqdecline") or strfind(tostring(text), "vqremove") then
+	local channelId = GetChannelName(channelName)
+	if channelId < 1 then
+		channelId = "vqueuenochannel"
+	end
+	if (strfind(tostring(text), tostring(channelId) .. ".") or strfind(tostring(text), "vqgroup") or strfind(tostring(text), "vqrequest") or strfind(tostring(text), "vqaccept") or strfind(tostring(text), "vqdecline") or strfind(tostring(text), "vqremove")) and filterEnabled then
 		blockMsg = false
 	elseif text ~= nil then
 		self.hooks[frame].AddMessage(frame, string.format("%s", text), r, g, b, id)
@@ -102,6 +111,7 @@ end
 
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
+		findTimer = GetTime() - 10
 		categories["Miscellaneous"] =
 		{
 			expanded = false,
@@ -199,6 +209,10 @@ function vQueue_OnEvent(event)
 		vQueueFrame:SetScript("OnMouseUp", function(self, button)
 			vQueueFrame:StopMovingOrSizing()
 		end)
+		vQueueFrame:SetScript("OnHide", function()
+			vQueueFrame.catList:Hide()
+			vQueueFrame.hostlist:Hide()
+		end)
 		vQueueFrame.closeButton = CreateFrame("Button", nil, vQueueFrame, "UIPanelButtonTemplate")
 		vQueueFrame.closeButton:SetPoint("TOPRIGHT", vQueueFrame, "TOPRIGHT", -3, 0)
 		vQueueFrame.closeButton:SetFont("Fonts\\FRIZQT__.TTF", 10)
@@ -294,6 +308,7 @@ function vQueue_OnEvent(event)
 			elseif arg1 == -1 then
 				scrollbarCat:SetValue(scrollbarCat:GetValue()+1)
 			end
+			realScroll = true
 		end)
 		
 		vQueueFrame.catListBg = vQueueFrame.catList:CreateTexture(nil, "BACKGROUND")
@@ -429,7 +444,7 @@ function vQueue_OnEvent(event)
 								local colorg = 235/255
 								local colorb = 233/255
 								if (i ~= 1) then
-									if type(tonumber(item)) == "number" then
+									if type(tonumber(item)) == "number" and i == 3 then
 										local playerLevel = UnitLevel("player")
 										local levelKey = tonumber(item)
 										if (levelKey - playerLevel) >= 5 then
@@ -498,9 +513,17 @@ function vQueue_OnEvent(event)
 							vQueueFrame.hostlistInviteButton:SetWidth(vQueueFrame.hostlistInviteButton:GetTextWidth()+5)
 							vQueueFrame.hostlistInviteButton:SetHeight(vQueueFrame.hostlistInviteButton:GetTextHeight()+3)
 							vQueueFrame.hostlistInviteButton:SetScript("OnMouseDown", function()
+								if GetNumPartyMembers() > 0 then 
+									vQueueFrame.hostlistRoleText:SetText("(Leave group before queueing for other groups)")
+									return 
+								end
 								if this:GetText() == "wait list" then
+									local childs, minLvl = this:GetParent():GetChildren()
+									if tonumber(minLvl:GetText()) > UnitLevel("player") then
+										vQueueFrame.hostlistRoleText:SetText("(You do not meet the level requirements for this group)")
+										return
+									end
 									this:SetText("waiting")
-									local childs = this:GetParent():GetChildren()
 									vQueue_SlashCommandHandler("request " .. childs:GetText())
 									if not setContains(waitingList, childs:GetText()) then
 										addToSet(waitingList, childs:GetText())
@@ -1000,7 +1023,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistRoleText:ClearAllPoints()
 		vQueueFrame.hostlistRoleText:SetPoint("BOTTOMLEFT", vQueueFrame.hostlistTopSection, "BOTTOMLEFT", 5, 5)
 		vQueueFrame.hostlistRoleText:EnableMouse(false)
-		vQueueFrame.hostlistRoleText:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.hostlistRoleText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
 		vQueueFrame.hostlistRoleText:SetText("(Select a role to start finding)")
 		vQueueFrame.hostlistRoleText:SetTextColor(209/255, 164/255, 29/255)
 		vQueueFrame.hostlistRoleText:SetWidth(vQueueFrame.hostlistRoleText:GetTextWidth())
@@ -1092,11 +1115,14 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistFindButton:SetWidth(vQueueFrame.hostlistFindButton:GetTextWidth()+5)
 		vQueueFrame.hostlistFindButton:SetHeight(vQueueFrame.hostlistFindButton:GetTextHeight()+3)
 		vQueueFrame.hostlistFindButton:SetScript("OnMouseDown", function()
+			vQueueFrame.hostlistFindButton:SetButtonState("DISABLED", true)
+			vQueueFrame.hostlistFindButton:EnableMouse(false)
+			findTimer = GetTime()
 			vQueueFrame.hostlistHostButton:Show()
 			vQueueFrame.hostlistLevelField:Hide()
 			vQueueFrame.hostlistNameField:Hide()
 			vQueueFrame.hostlistCreateButton:Hide()
-			vQueueFrame.hostlistFindButton:SetButtonState("PUSHED", false)
+			--vQueueFrame.hostlistFindButton:SetButtonState("PUSHED", false)
 			isHost = false
 			isFinding = true
 			vQueue_SlashCommandHandler( "lfg " .. selectedQuery )
@@ -1111,8 +1137,11 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlist:Hide()
 			vQueueFrame.hostlist:Show()
 		end)
-		vQueueFrame.hostlistFindButton:SetScript("OnLeave", function()
-			vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", false)
+		vQueueFrame.hostlistFindButton:SetScript("OnUpdate", function()
+			if (GetTime() - findTimer) > 10 then
+				vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", false)
+				vQueueFrame.hostlistFindButton:EnableMouse(true)
+			end
 		end)
 		
 		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist )
@@ -1122,7 +1151,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistNameField:SetText("LFM")
 		if hostOptions[0] ~= nil then vQueueFrame.hostlistNameField:SetText(hostOptions[0]) end
 		vQueueFrame.hostlistNameField:SetTextColor(247/255, 235/255, 233/255)
-		vQueueFrame.hostlistNameField:SetMaxLetters(40)
+		vQueueFrame.hostlistNameField:SetMaxLetters(38)
 		vQueueFrame.hostlistNameField:SetWidth(vQueueFrame.hostlist:GetWidth() * 4/5)
 		vQueueFrame.hostlistNameField:SetHeight(20)
 		
@@ -1372,13 +1401,21 @@ function vQueue_OnEvent(event)
 		scrollbarCat:SetScript("OnValueChanged",
 		function (self, value)
 			for k, v in pairs(catListButtons) do
-				if tonumber(k)+1 < this:GetValue() or ( (v:GetTextHeight()*k) + (2*k)) > (this:GetHeight()+(this:GetValue()*(v:GetTextHeight()) + 6))  then
+			--( (v:GetTextHeight()*k) + (2*k)) > (this:GetHeight()+(this:GetValue()*(v:GetTextHeight()) + 6))
+				local yOffset = v:GetBottom()
+				if tonumber(k)+1 < this:GetValue() or (yOffset-v:GetTextHeight()*2) < vQueueFrame.catList:GetBottom() then
 					if not setContains(catListHidden, tostring(k)) then
 						addToSet(catListHidden, tostring(k))
+					end
+					if (yOffset-v:GetTextHeight()*2) < vQueueFrame.catList:GetBottom() and not setContains(catListHiddenBot, tostring(k)) then
+						addToSet(catListHiddenBot, tostring(k))
 					end
 				else
 					if setContains(catListHidden, tostring(k)) then
 						removeFromSet(catListHidden, tostring(k))
+					end
+					if setContains(catListHiddenBot, tostring(k)) then
+						removeFromSet(catListHiddenBot, tostring(k))
 					end
 				end
 			end
@@ -1396,7 +1433,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.title:ClearAllPoints()
 		vQueueFrame.title:SetPoint("CENTER", vQueueFrame.hostlist, "TOP", 0 , 8)
 		vQueueFrame.title:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.title:SetText("vQueue v0.0 - ayy")
+		vQueueFrame.title:SetText("vQueue v" .. GetAddOnMetadata("vQueue", "Version") .. "  - Group Finder")
 		vQueueFrame.title:SetTextColor(209/255, 164/255, 29/255)
 		vQueueFrame.title:SetPushedTextOffset(0,0)
 		vQueueFrame.title:SetWidth(20)
@@ -1421,12 +1458,45 @@ function vQueue_OnEvent(event)
 		minimapButton:SetHeight(20)
 		minimapButton:ClearAllPoints()
 		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",52-(75*cos(MinimapPos)),(75*sin(MinimapPos))-52) 
+		minimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
 		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
-		minimapButton.texture:SetTexture(1, 1, 1, 1)
-		minimapButton.texture:ClearAllPoints()
-		minimapButton.texture:SetPoint("CENTER", minimapButton, "CENTER")
+		minimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
+		minimapButton.texture:SetAllPoints()
 		minimapButton.texture:SetWidth(minimapButton:GetWidth())
 		minimapButton.texture:SetHeight(minimapButton:GetHeight())
+		
+		minimapButton.border = minimapButton:CreateTexture(nil, "OVERLAY")
+		minimapButton.border:SetTexture("Interface\\MINIMAP\\MiniMap-TrackingBorder")
+		minimapButton.border:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", -6, 6)
+		minimapButton.border:SetWidth(53)
+		minimapButton.border:SetHeight(53)
+		minimapButton:SetScript("OnMouseDown", function(self, button)
+			point, relativeTo, relativePoint, xOffset, yOffset = minimapButton.texture:GetPoint(1)
+			minimapButton.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
+		end);
+		minimapButton:SetScript("OnLeave", function(self, button)
+			minimapButton.texture:SetAllPoints()
+		end);
+		minimapButton:SetScript("OnMouseUp", function(self, button)
+			if vQueueFrameShown then 
+				if not isHost then LeaveChannelByName(channelName) end
+				vQueueFrame:Hide() 
+				vQueueFrame.catList:Hide()
+				vQueueFrame.hostlist:Hide()
+				vQueueFrameShown = false
+			else
+				JoinChannelByName(channelName)
+				vQueueFrame:Show() 
+				vQueueFrame.catList:Show()
+				vQueueFrame.hostlist:Show()
+				vQueueFrameShown = true
+			end
+			minimapButton.texture:SetAllPoints()
+		end);
+		--CreateFrame( "GameTooltip", "minimapToolTip", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
+		--minimapToolTip:SetOwner( minimapButton, "ANCHOR_NONE" );
+		--minimapToolTip:AddLine("testtext", 1, 1, 1, true)
+		
 		
 		vQueueFrame.topsectiontitle = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlistTopSection)
 		vQueueFrame.topsectiontitle:ClearAllPoints()
@@ -1493,6 +1563,7 @@ function vQueue_OnEvent(event)
 						local prevVal = scrollbarCat:GetValue()
 						scrollbarCat:SetValue(prevVal+1)
 						scrollbarCat:SetValue(prevVal)
+						realScroll = true
 						vQueueFrame.catList:Hide()
 						vQueueFrame.catList:Show()
 					end)
@@ -1580,38 +1651,30 @@ function vQueue_OnEvent(event)
 				else yPosition = 0
 				end
 				for k, v in ipairs(catListButtons) do
-					if v:IsShown() then
+					if not setContains(catListHidden, tostring(k)) then
 						point, relativeTo, relativePoint, xOffset, yOffset = v:GetPoint(1)
 						v:ClearAllPoints()
 						v:SetPoint("RIGHT", vQueueFrame.catList, "TOPLEFT",  xOffset, -((yPosition+1)*10))
 						yPosition = yPosition + 1
 					end
 				end
+				local tyPosition = yPosition - 1
+				for k, v in ipairs(catListButtons) do
+					if setContains(catListHiddenBot, tostring(k)) then
+						point, relativeTo, relativePoint, xOffset, yOffset = v:GetPoint(1)
+						v:ClearAllPoints()
+						v:SetPoint("RIGHT", vQueueFrame.catList, "TOPLEFT",  xOffset, -((tyPosition+1)*10))
+						tyPosition = tyPosition + 1
+					end
+				end
 			end
-		end)
-
-		
-		minimapButton:SetScript("OnMouseDown", function(self, button)
-			if vQueueFrameShown then 
-				if not isHost then LeaveChannelByName(channelName) end
-				vQueueFrame:Hide() 
-				vQueueFrame.catList:Hide()
-				vQueueFrame.hostlist:Hide()
-				vQueueFrameShown = false
-			else
-				JoinChannelByName(channelName)
-				vQueueFrame:Show() 
-				vQueueFrame.catList:Show()
-				vQueueFrame.hostlist:Show()
-				vQueueFrameShown = true
+			if realScroll then
+				realScroll = false
+				local prevVal = scrollbarCat:GetValue()
+				scrollbarCat:SetValue(prevVal+1)
+				scrollbarCat:SetValue(prevVal)
 			end
-			minimapButton.texture:SetTexture(0, 0, 0, 1)
-		end);
-		minimapButton:SetScript("OnMouseUp", function(self, button)
-			minimapButton.texture:SetTexture(1, 1, 1, 1)
-		end);
-		
-		
+		end)		
 		minimapButton:Show()
 		vQueueFrame:Hide()
 		vQueueFrame.catList:Hide()
@@ -1633,11 +1696,55 @@ function vQueue_OnEvent(event)
 				vQueueArgs = split(arg1, "\%s")
 			end
 			if vQueueArgs[1] == "lfg" and vQueueArgs[2] ~= nil and isHost then
+				for k, v in pairs(blackList) do
+					local blackListArgs = split(k, "\:")
+					if blackListArgs[1] == arg2 then return end
+				end
+				
+				local recentContained = false
+				for k, v in pairs(recentList) do
+					local recentArgs = split(k, "\:")
+					if recentArgs[1] == arg2 then
+						recentContained = true
+						if (GetTime() - tonumber(recentArgs[3])) > 10 then
+							removeFromSet(recentList, k)
+							recentContained = false
+							break
+						else
+							local msgCount = tostring(tonumber(recentArgs[2])+1)
+							local msgTime = recentArgs[3]
+							removeFromSet(recentList, k)
+							addToSet(recentList, arg2 .. ":" .. msgCount .. ":" .. msgTime)
+							if tonumber(msgCount) > 5 then
+								local blackListContained = false
+								for key, value in pairs(blackList) do
+									local blackListArgs = split(key, "\:")
+									if blackListArgs[1] == arg2 then blackListContained = true end
+								end
+								if not blackListContained then
+									addToSet(blackList, arg2 .. ":" .. GetTime())
+									return
+								end
+							end
+							break
+						end
+					end
+				end
+				if not recentContained then
+					addToSet(recentList, arg2 .. ":1:" .. GetTime())
+				end
+				
+				local inGroup = 0
+				for k, v in pairs(playersQueued) do
+					local playersQueuedArgs = split(k, "\:")
+					if playersQueuedArgs[1] == arg2 then inGroup = 1 end
+				end
+				
 				local groupSize = GetNumRaidMembers()
 				if groupSize == 0 then groupSize = GetNumPartyMembers() end
 				groupSize = groupSize + 1
-				if hostedCategory == vQueueArgs[2] and not setContains(chatQueue, chatQueue, "vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. groupSize .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " :" .. tostring(hostOptions[0]) .. "-WHISPER-" .. arg2) and not setContains(playersQueued, arg2) then
-					addToSet(chatQueue, "vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. groupSize .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " :" .. tostring(hostOptions[0]) .. "-WHISPER-" .. arg2)
+				if hostedCategory == vQueueArgs[2] and not setContains(chatQueue, "vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. groupSize .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " " .. tostring(inGroup) .. " :" .. tostring(hostOptions[0]) .. "-WHISPER-" .. arg2) then
+					addToSet(chatQueue, "vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. groupSize .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " " .. tostring(inGroup) .. " :" .. tostring(hostOptions[0]) .. "-WHISPER-" .. arg2)
 				end
 			end		
 		end
@@ -1664,12 +1771,23 @@ function vQueue_OnEvent(event)
 			if args[7] == "true" then
 			 tankRole = "Tank"
 			end
+			for k, v in pairs(groups) do
+				for key, value in pairs(groups[k]) do
+					local groupArgs = split(value, "\:")
+					if arg2 == groupArgs[2] then return end
+				end
+			end
+			if tonumber(args[8]) == 0 and setContains(waitingList, arg2) then removeFromSet(waitingList, arg2)
+			elseif tonumber(args[8]) == 1 and not setContains(waitingList, arg2) then addToSet(waitingList, arg2) end
 			table.insert(groups[args[2]], tablelength(groups[args[2]]), name[2] .. ":" .. arg2 .. ":" .. args[3] .. ":" .. args[4] .. ":" .. "Role " .. healerRole .. " " .. damageRole .. " " .. tankRole)
 			hostListFrame:Hide()
 			hostListFrame:Show()
 		end
 		-- Group request info from players
 		if args[1] == "vqrequest" and isHost then
+			for groupindex = 1,MAX_PARTY_MEMBERS do
+				if UnitName("party" .. tostring(groupindex)) == arg2 then return end
+			end
 			if not setContains(playersQueued, arg2 .. ":" .. args[2] .. ":" .. args[3] .. ":" .. args[4]) then
 				addToSet(playersQueued, arg2 .. ":" .. args[2] .. ":" .. args[3] .. ":" .. args[4])
 				hostListFrame:Hide()
@@ -1689,6 +1807,7 @@ function vQueue_OnEvent(event)
 								elseif args[1] == "vqdecline" then
 									DEFAULT_CHAT_FRAME:AddMessage("Your application to " .. arg2 .. "'s group(" .. key .. ") has been declined.", 1.0, 0.2, 0.2)
 								end
+								removeFromSet(waitingList, arg2)
 								groups[key][kk] = nil
 							end
 						end
@@ -1740,6 +1859,13 @@ function vQueue_OnUpdate()
 	local elapsed = GetTime() - startTime
 	startTime = GetTime()
 	
+	for k, v in pairs(blackList) do
+		local blackListArgs = split(k, "\:")
+		if (GetTime() - tonumber(blackListArgs[2])) > (3*60) then
+			removeFromSet(blackList, k)
+		end
+	end
+	
 	-- CHAT LIMITER
 	if(chatRate > 0) then
 		lastUpdate = lastUpdate + elapsed
@@ -1750,10 +1876,11 @@ function vQueue_OnUpdate()
 				for key,value in pairs(chatQueue) do 
 					local args = split(key, "\-")
 					SendChatMessage(args[1] , args[2], nil , args[3]);
+					lastUpdate = 0
 					removeFromSet(chatQueue, key)
+					break
 				end
 			end
-			lastUpdate = 0
 		end
 	end
 	elapsed = 0

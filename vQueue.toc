@@ -1,7 +1,8 @@
 ## Interface: 11200
 ## Title: vQueue
-## Author: Dprk
-## Notes: vQueue addon
+## Author: Devlix
+## Notes: Utility for group finding.
+## Version: 1.0
 
 Libs\AceLibrary\AceLibrary.lua
 Libs\AceOO-2.0\AceOO-2.0.lua
