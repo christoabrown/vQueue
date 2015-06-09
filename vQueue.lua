@@ -94,7 +94,7 @@ end
 
 function vQueue:AddMessage(frame, text, r, g, b, id)
 	local channelId = GetChannelName(channelName)
-	if channelId < 1 then
+	if tonumber(channelId) < 1 then
 		channelId = "vqueuenochannel"
 	end
 	if (strfind(tostring(text), tostring(channelId) .. ".") or strfind(tostring(text), "vqgroup") or strfind(tostring(text), "vqrequest") or strfind(tostring(text), "vqaccept") or strfind(tostring(text), "vqdecline") or strfind(tostring(text), "vqremove")) and filterEnabled then
@@ -1093,6 +1093,13 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistCreateButton:Hide()
 			isHost = false
 			isFinding = false
+			for k, v in pairs(playersQueued) do
+				local playerQueuedArgs = split(k, "\:")
+				if not setContains(chatQueue, "vqdecline" .. "-WHISPER-" .. playerQueuedArgs[1]) then
+					addToSet(chatQueue, "vqdecline" .. "-WHISPER-" .. playerQueuedArgs[1])
+				end
+			end
+			
 			playersQueued = {}
 			vQueueFrame.hostlist:Hide()
 			vQueueFrame.hostlist:Show()
@@ -1139,7 +1146,7 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlist:Show()
 		end)
 		vQueueFrame.hostlistFindButton:SetScript("OnUpdate", function()
-			if (GetTime() - findTimer) > 10 then
+			if (GetTime() - findTimer) > 4 then
 				vQueueFrame.hostlistFindButton:SetButtonState("NORMAL", false)
 				vQueueFrame.hostlistFindButton:EnableMouse(true)
 			end
@@ -1483,13 +1490,11 @@ function vQueue_OnEvent(event)
 		minimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
 				if vQueueFrameShown then 
-					if not isHost then LeaveChannelByName(channelName) end
 					vQueueFrame:Hide() 
 					vQueueFrame.catList:Hide()
 					vQueueFrame.hostlist:Hide()
 					vQueueFrameShown = false
 				else
-					JoinChannelByName(channelName)
 					vQueueFrame:Show() 
 					vQueueFrame.catList:Show()
 					vQueueFrame.hostlist:Show()
@@ -1900,6 +1905,12 @@ function vQueue_OnUpdate()
 		if (GetTime() - tonumber(blackListArgs[2])) > (3*60) then
 			removeFromSet(blackList, k)
 		end
+	end
+	
+	if vQueueFrame:IsShown() and GetChannelName(channelName) < 1 then
+		JoinChannelByName(channelName)
+	elseif not vQueueFrame:IsShown() and GetChannelName(channelName) > 0 and not isHost then
+		LeaveChannelByName(channelName)
 	end
 	
 	-- CHAT LIMITER
