@@ -1043,6 +1043,10 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHostButton:SetWidth(vQueueFrame.hostlistHostButton:GetTextWidth()+5)
 		vQueueFrame.hostlistHostButton:SetHeight(vQueueFrame.hostlistHostButton:GetTextHeight()+3)
 		vQueueFrame.hostlistHostButton:SetScript("OnMouseDown", function()
+			if UnitLevel("player") < 5 then 
+				vQueueFrame.hostlistRoleText:SetText("(You must be at least level 5 to use this)")
+				return
+			end
 			vQueueFrame.hostlistHostButton:Hide()
 			isFinding = false
 			vQueueFrame.hostlistLevelField:Show()
@@ -1123,6 +1127,10 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistFindButton:SetWidth(vQueueFrame.hostlistFindButton:GetTextWidth()+5)
 		vQueueFrame.hostlistFindButton:SetHeight(vQueueFrame.hostlistFindButton:GetTextHeight()+3)
 		vQueueFrame.hostlistFindButton:SetScript("OnMouseDown", function()
+			if UnitLevel("player") < 5 then 
+				vQueueFrame.hostlistRoleText:SetText("(You must be at least level 5 to use this)")
+				return
+			end
 			vQueueFrame.hostlistFindButton:SetButtonState("DISABLED", true)
 			vQueueFrame.hostlistFindButton:EnableMouse(false)
 			findTimer = GetTime()
