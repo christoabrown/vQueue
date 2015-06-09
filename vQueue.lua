@@ -27,6 +27,7 @@ local realScroll = false
 local recentList = {}
 local blackList = {}
 local findTimer = 0
+local miniDrag = false
 
 local tankSelected = false
 local healerSelected = false
@@ -1459,6 +1460,7 @@ function vQueue_OnEvent(event)
 		minimapButton:ClearAllPoints()
 		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",52-(75*cos(MinimapPos)),(75*sin(MinimapPos))-52) 
 		minimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
+		minimapButton:RegisterForDrag("RightButton")
 		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
 		minimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
 		minimapButton.texture:SetAllPoints()
@@ -1470,32 +1472,66 @@ function vQueue_OnEvent(event)
 		minimapButton.border:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", -6, 6)
 		minimapButton.border:SetWidth(53)
 		minimapButton.border:SetHeight(53)
-		minimapButton:SetScript("OnMouseDown", function(self, button)
+		minimapButton:SetScript("OnMouseDown", function()
 			point, relativeTo, relativePoint, xOffset, yOffset = minimapButton.texture:GetPoint(1)
 			minimapButton.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
 		end);
 		minimapButton:SetScript("OnLeave", function(self, button)
+			--minimapToolTip:Hide()
 			minimapButton.texture:SetAllPoints()
 		end);
-		minimapButton:SetScript("OnMouseUp", function(self, button)
-			if vQueueFrameShown then 
-				if not isHost then LeaveChannelByName(channelName) end
-				vQueueFrame:Hide() 
-				vQueueFrame.catList:Hide()
-				vQueueFrame.hostlist:Hide()
-				vQueueFrameShown = false
-			else
-				JoinChannelByName(channelName)
-				vQueueFrame:Show() 
-				vQueueFrame.catList:Show()
-				vQueueFrame.hostlist:Show()
-				vQueueFrameShown = true
+		minimapButton:SetScript("OnMouseUp", function()
+			if arg1 == "LeftButton" then
+				if vQueueFrameShown then 
+					if not isHost then LeaveChannelByName(channelName) end
+					vQueueFrame:Hide() 
+					vQueueFrame.catList:Hide()
+					vQueueFrame.hostlist:Hide()
+					vQueueFrameShown = false
+				else
+					JoinChannelByName(channelName)
+					vQueueFrame:Show() 
+					vQueueFrame.catList:Show()
+					vQueueFrame.hostlist:Show()
+					vQueueFrameShown = true
+				end
 			end
 			minimapButton.texture:SetAllPoints()
 		end);
+		minimapButton:SetScript("OnDragStart", function()
+			miniDrag = true
+		end)
+		minimapButton:SetScript("OnDragStop", function()
+			miniDrag = false
+		end)
+		minimapButton:SetScript("OnUpdate", function()
+			if miniDrag then
+				    local xpos,ypos = GetCursorPosition() 
+					local xmin,ymin = Minimap:GetLeft(), Minimap:GetBottom() 
+
+					xpos = xmin-xpos/UIParent:GetScale()+70 
+					ypos = ypos/UIParent:GetScale()-ymin-70 
+					
+					local MinimapPos = math.deg(math.atan2(ypos,xpos))
+					if (MinimapPos < 0) then
+						MinimapPos = MinimapPos + 360
+					end
+					this:SetPoint("TOPLEFT", Minimap,"TOPLEFT",54-(75*cos(MinimapPos)),(75*sin(MinimapPos))-55) 
+			end
+		end)
+		minimapButton:SetScript("OnEnter", function()
+			--minimapToolTip:SetOwner( minimapButton, "ANCHOR_BOTTOMLEFT" );
+			--minimapToolTip:AddLine("New players in queue", 1, 1, 1)
+			--minimapToolTip:CreateFontString( "minimapToolTipText", nil, "GameTooltipText" )
+			--minimapToolTipText:SetFont("Fonts\\MORPHEUS.ttf", 12)
+			--minimapToolTipText:SetText("New players in queue")
+			--minimapToolTip:AddFontStrings(minimapToolTipText, minimapToolTipText)
+			--minimapToolTip:Show()
+		end)
 		--CreateFrame( "GameTooltip", "minimapToolTip", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
-		--minimapToolTip:SetOwner( minimapButton, "ANCHOR_NONE" );
-		--minimapToolTip:AddLine("testtext", 1, 1, 1, true)
+		--minimapToolTip:CreateFontString( "minimapToolTipText", nil, "GameTooltipText" )
+		--minimapToolTipText:SetFont("Fonts\\MORPHEUS.ttf", 12)
+		--minimapToolTipText:SetText("New players in queue")
 		
 		
 		vQueueFrame.topsectiontitle = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlistTopSection)
