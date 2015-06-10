@@ -113,6 +113,9 @@ end
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
 		findTimer = GetTime() - 10
+		if MinimapPos == nil then
+			MinimapPos = -30
+		end
 		categories["Miscellaneous"] =
 		{
 			expanded = false,
@@ -1466,34 +1469,33 @@ function vQueue_OnEvent(event)
 		vQueueFrame.titleCat:SetHeight(20)
 		
 		
-		local MinimapPos = -30
 		DEFAULT_CHAT_FRAME:AddMessage("Loaded " .. arg1)
 		minimapButton = CreateFrame("Button", "vQueueMap", Minimap)
 		minimapButton:SetFrameStrata("HIGH")
-		minimapButton:SetWidth(20)
-		minimapButton:SetHeight(20)
+		minimapButton:SetWidth(32)
+		minimapButton:SetHeight(32)
 		minimapButton:ClearAllPoints()
-		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",52-(75*cos(MinimapPos)),(75*sin(MinimapPos))-52) 
+		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",54-(75*cos(MinimapPos)),(75*sin(MinimapPos))-55) 
 		minimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
 		minimapButton:RegisterForDrag("RightButton")
 		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
 		minimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
-		minimapButton.texture:SetAllPoints()
-		minimapButton.texture:SetWidth(minimapButton:GetWidth())
-		minimapButton.texture:SetHeight(minimapButton:GetHeight())
+		minimapButton.texture:SetPoint("CENTER", minimapButton)
+		minimapButton.texture:SetWidth(20)
+		minimapButton.texture:SetHeight(20)
 		
 		minimapButton.border = minimapButton:CreateTexture(nil, "OVERLAY")
 		minimapButton.border:SetTexture("Interface\\MINIMAP\\MiniMap-TrackingBorder")
-		minimapButton.border:SetPoint("TOPLEFT", minimapButton, "TOPLEFT", -6, 6)
-		minimapButton.border:SetWidth(53)
-		minimapButton.border:SetHeight(53)
+		minimapButton.border:SetPoint("TOPLEFT", minimapButton.texture, -6, 5)
+		minimapButton.border:SetWidth(52)
+		minimapButton.border:SetHeight(52)
 		minimapButton:SetScript("OnMouseDown", function()
 			point, relativeTo, relativePoint, xOffset, yOffset = minimapButton.texture:GetPoint(1)
 			minimapButton.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
 		end);
 		minimapButton:SetScript("OnLeave", function(self, button)
 			--minimapToolTip:Hide()
-			minimapButton.texture:SetAllPoints()
+			minimapButton.texture:SetPoint("CENTER", minimapButton)
 		end);
 		minimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
@@ -1509,7 +1511,7 @@ function vQueue_OnEvent(event)
 					vQueueFrameShown = true
 				end
 			end
-			minimapButton.texture:SetAllPoints()
+			minimapButton.texture:SetPoint("CENTER", minimapButton)
 		end);
 		minimapButton:SetScript("OnDragStart", function()
 			miniDrag = true
@@ -1525,7 +1527,7 @@ function vQueue_OnEvent(event)
 					xpos = xmin-xpos/UIParent:GetScale()+70 
 					ypos = ypos/UIParent:GetScale()-ymin-70 
 					
-					local MinimapPos = math.deg(math.atan2(ypos,xpos))
+					MinimapPos = math.deg(math.atan2(ypos,xpos))
 					if (MinimapPos < 0) then
 						MinimapPos = MinimapPos + 360
 					end

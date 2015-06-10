@@ -2,6 +2,7 @@
 ## Title: vQueue
 ## Author: Devlix
 ## Notes: Utility for group finding.
+## SavedVariables: MinimapPos
 ## Version: 1.0
 
 Libs\AceLibrary\AceLibrary.lua
