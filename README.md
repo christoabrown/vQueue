@@ -1,7 +1,7 @@
 # vQueue - Group finder utility for Vanilla Wow
 
 v1.1
-*Minimap icon now saves its position
+ * Minimap icon now saves its position
 *Selected role saves between characters
 *Group listing now always stays up to date with latest vQueue groups - no more need for a refresh button
 *find button is now a toggle option - enabled by default
