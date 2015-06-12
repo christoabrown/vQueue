@@ -293,6 +293,15 @@ MINLVLS = {
 	
 }
 
+MINLVLS["quest110"] = 1
+MINLVLS["quest1020"] = 10
+MINLVLS["quest2030"] = 20
+MINLVLS["quest3040"] = 30
+MINLVLS["quest4050"] = 40
+MINLVLS["quest5060"] = 50
+
+MINLVLS["misc"] = 1
+
 -- bgs --
 MINLVLS["wsg"] = 10
 MINLVLS["ab"] = 20

@@ -1286,12 +1286,12 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistCreateButton:Show()
 			vQueueFrame.hostlistCancelButton:Show()
 			vQueueFrame.hostlistCreateButton:SetText("Create group")
-			for k, v in pairs(waitingList) do
-				if not setContains(chatQueue, "vqremove" .. "-WHISPER-" .. k) then
-					addToSet(chatQueue, "vqremove" .. "-WHISPER-" .. k)
-					removeFromSet(waitingList, k)
-				end
-			end
+			-- for k, v in pairs(waitingList) do
+				-- if not setContains(chatQueue, "vqremove" .. "-WHISPER-" .. k) then
+					-- addToSet(chatQueue, "vqremove" .. "-WHISPER-" .. k)
+					-- removeFromSet(waitingList, k)
+				-- end
+			-- end
 			vQueueFrame.hostlist:Hide()
 			vQueueFrame.hostlist:Show()
 		end)
