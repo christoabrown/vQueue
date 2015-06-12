@@ -2,8 +2,9 @@
 ## Title: vQueue
 ## Author: Devlix
 ## Notes: Utility for group finding.
-## SavedVariables: MinimapPos
-## Version: 1.0
+## SavedVariables: MinimapPos, vQueueOptions
+## SavedVariablesPerCharacter: selectedRole, isFinding
+## Version: 1.1
 
 Libs\AceLibrary\AceLibrary.lua
 Libs\AceOO-2.0\AceOO-2.0.lua
@@ -18,3 +19,4 @@ Libs\AceModuleCore-2.0\AceModuleCore-2.0.lua
 
 vQueue.lua
 vQueue.xml
+vQueueMessages.lua
