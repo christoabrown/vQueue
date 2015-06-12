@@ -17,4 +17,4 @@
 Some pictures showing what vQueue does:
 
 ![Alt text](http://i.imgur.com/npogpmt.png)
-![Alt text](http://i.imgur.com/pzwYicQ.png)
+![Alt text](http://i.imgur.com/TxXGWnI.png)
