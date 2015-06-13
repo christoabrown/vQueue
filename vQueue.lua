@@ -2690,7 +2690,7 @@ function vQueue_OnEvent(event)
 	end
 end
 
-local idleMessage = 30
+local idleMessage = 0
 
 function vQueue_SlashCommandHandler( msg )
 	local args = {}
@@ -2754,11 +2754,6 @@ function vQueue_OnUpdate()
 	
 	whoRequestTimer = whoRequestTimer + elapsed
 	if whoRequestTimer > 2 then
-		if (isFinding or isHost) and GetChannelName(channelName) < 1 then
-			JoinChannelByName(channelName)
-		elseif GetChannelName(channelName) > 0 and (isHost == false and isFinding == false) then
-			LeaveChannelByName(channelName)
-		end
 		whoRequestTimer = 0
 		if tablelength(whoRequestList) > 0 and not FriendsFrame:IsShown() then
 			local whoString = ""
@@ -2768,12 +2763,19 @@ function vQueue_OnUpdate()
 			SetWhoToUI(1)
 			FriendsFrame:UnregisterEvent("WHO_LIST_UPDATE")
 			SendWho(whoString)
+		elseif FriendsFrame:IsShown() then
+			FriendsFrame:RegisterEvent("WHO_LIST_UPDATE")
 		end
 	end
 	
 	idleMessage = idleMessage + elapsed
 	if idleMessage > 30 and tablelength(chatQueue) == 0 then
 		idleMessage = 0
+		if (isFinding or isHost) and GetChannelName(channelName) < 1 then
+			JoinChannelByName(channelName)
+		elseif GetChannelName(channelName) > 0 and (isHost == false and isFinding == false) then
+			LeaveChannelByName(channelName)
+		end
 		if isHost then
 			local groupSize = GetNumRaidMembers()
 			if groupSize == 0 then groupSize = GetNumPartyMembers() end
