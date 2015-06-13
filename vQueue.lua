@@ -105,7 +105,7 @@ end
 function vQueue:AddMessage(frame, text, r, g, b, id)
 	local channelId = GetChannelName(channelName)
 	local blockMsg = false
-	if vQueueOptions["filter"] and loaded then
+	if vQueueOptions["filter"] then
 		if not vQueueOptions["onlylfg"] then
 			if vQueueOptions["general"] and (strfind(tostring(text), "%[" .. tostring(GetChannelName("General - " .. GetRealZoneText()))) and strfind(tostring(text), "%]") ) and GetChannelName("General - " .. GetRealZoneText()) ~= 0 then blockMsg = true end
 			if vQueueOptions["trade"] and (strfind(tostring(text), "%[" .. tostring(GetChannelName("Trade - City"))) and strfind(tostring(text), "%]") ) and GetChannelName("Trade - City") ~= 0 then blockMsg = true end
