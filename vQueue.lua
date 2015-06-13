@@ -2760,7 +2760,7 @@ function vQueue_OnUpdate()
 			LeaveChannelByName(channelName)
 		end
 		whoRequestTimer = 0
-		if tablelength(whoRequestList) > 0 then
+		if tablelength(whoRequestList) > 0 and not FriendsFrame:IsShown() then
 			local whoString = ""
 			for k, v in pairs(whoRequestList) do
 				whoString = whoString .. k .. " "

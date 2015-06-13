@@ -14,8 +14,7 @@ LFGARGS = {
 	"any groups",
 	"any parties",
 	"any party",
-	"any partys",
-	"lf"
+	"any partys"
 }
 ROLEARGS = {
 	
@@ -74,7 +73,9 @@ ROLEARGS["Damage"] = {
 	"range",
 	"melee",
 	"mele",
-	"ranger"
+	"ranger",
+	"dd",
+	"ranged"
 }
 ROLEARGS["Tank"] = {
 	"tank",
