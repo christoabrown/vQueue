@@ -37,7 +37,6 @@ local newGroups = {}
 local tankSelected = false
 local healerSelected = false
 local damageSelected = false
-local _G = getfenv(0)
 
 local hostOptions = {}
 
@@ -106,7 +105,7 @@ end
 function vQueue:AddMessage(frame, text, r, g, b, id)
 	local channelId = GetChannelName(channelName)
 	local blockMsg = false
-	if vQueueOptions["filter"] then
+	if vQueueOptions["filter"] and loaded then
 		if not vQueueOptions["onlylfg"] then
 			if vQueueOptions["general"] and (strfind(tostring(text), "%[" .. tostring(GetChannelName("General - " .. GetRealZoneText()))) and strfind(tostring(text), "%]") ) and GetChannelName("General - " .. GetRealZoneText()) ~= 0 then blockMsg = true end
 			if vQueueOptions["trade"] and (strfind(tostring(text), "%[" .. tostring(GetChannelName("Trade - City"))) and strfind(tostring(text), "%]") ) and GetChannelName("Trade - City") ~= 0 then blockMsg = true end
@@ -115,10 +114,10 @@ function vQueue:AddMessage(frame, text, r, g, b, id)
 		elseif vQueueOptions["onlylfg"] then
 			local foundArg = false
 			local noPunc = filterPunctuation(tostring(text))
-			for k, v in pairs(_G["LFMARGS"]) do
+			for k, v in pairs(getglobal("LFMARGS")) do
 				if Wholefind(noPunc, v) > 0 then foundArg = true end
 			end
-			for k, v in pairs(_G["LFGARGS"]) do
+			for k, v in pairs(getglobal("LFGARGS")) do
 				if Wholefind(noPunc, v) > 0 then foundArg = true end
 			end
 			if foundArg then
@@ -729,7 +728,7 @@ function vQueue_OnEvent(event)
 				local colorg = 235/255
 				local colorb = 233/255
 				local classColor = {}
-				classColor["Druid"] = {1, 0.49, 0.4}
+				classColor["Druid"] = {1, 0.49, 0.04}
 				classColor["Hunter"] = {0.67, 0.83, 0.45}
 				classColor["Mage"] = {0.41, 0.80, 0.94}
 				classColor["Paladin"] = {0.96, 0.55, 0.73}
@@ -1280,7 +1279,7 @@ function vQueue_OnEvent(event)
 			isWaitListShown = true
 			--isFinding = false
 			--vQueueFrame.hostlistFindButton:SetChecked(false)
-			vQueueFrame.hostlistLevelField:SetText(_G["MINLVLS"][selectedQuery])
+			vQueueFrame.hostlistLevelField:SetText(getglobal("MINLVLS")[selectedQuery])
 			vQueueFrame.hostlistLevelField:Show()
 			vQueueFrame.hostlistNameField:Show()
 			vQueueFrame.hostlistCreateButton:Show()
@@ -1390,7 +1389,7 @@ function vQueue_OnEvent(event)
 		--vQueueFrame.hostlistFindButton:SetFont("Fonts\\FRIZQT__.TTF", 10)
 		--vQueueFrame.hostlistFindButton:SetText("Find")
 		--vQueueFrame.hostlistFindButton:SetTextColor(209/255, 164/255, 29/255)
-		_G[vQueueFrame.hostlistFindButton:GetName() .."Text"]:SetText("Find")
+		getglobal(vQueueFrame.hostlistFindButton:GetName() .."Text"):SetText("Find")
 		vQueueFrame.hostlistFindButton:SetWidth(16)
 		vQueueFrame.hostlistFindButton:SetHeight(16)
 		vQueueFrame.hostlistFindButton:SetChecked(isFinding)
@@ -1610,7 +1609,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheck = CreateFrame("CheckButton", "optionsFilterCheck", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheck:SetWidth(18)
 		vQueueFrame.filterCheck:SetHeight(18)
-		_G[vQueueFrame.filterCheck:GetName() .."Text"]:SetText("Hide channel messages")
+		getglobal(vQueueFrame.filterCheck:GetName() .."Text"):SetText("Hide channel messages")
 		vQueueFrame.filterCheck:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 5, -15)
 		vQueueFrame.filterCheck:SetChecked(vQueueOptions["filter"])
 		vQueueFrame.filterCheck:SetScript("OnClick", function()
@@ -1634,8 +1633,8 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheckGeneral = CreateFrame("CheckButton", "optionsFilterCheckGeneral", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckGeneral:SetWidth(16)
 		vQueueFrame.filterCheckGeneral:SetHeight(16)
-		_G[vQueueFrame.filterCheckGeneral:GetName() .."Text"]:SetText("General")
-		_G[vQueueFrame.filterCheckGeneral:GetName() .."Text"]:SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckGeneral:GetName() .."Text"):SetText("General")
+		getglobal(vQueueFrame.filterCheckGeneral:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
 		vQueueFrame.filterCheckGeneral:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -30)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckGeneral:Disable() end
 		vQueueFrame.filterCheckGeneral:SetChecked(vQueueOptions["general"])
@@ -1650,8 +1649,8 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheckTrade = CreateFrame("CheckButton", "optionsFilterCheckTrade", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckTrade:SetWidth(16)
 		vQueueFrame.filterCheckTrade:SetHeight(16)
-		_G[vQueueFrame.filterCheckTrade:GetName() .."Text"]:SetText("Trade")
-		_G[vQueueFrame.filterCheckTrade:GetName() .."Text"]:SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckTrade:GetName() .."Text"):SetText("Trade")
+		getglobal(vQueueFrame.filterCheckTrade:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
 		vQueueFrame.filterCheckTrade:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -42)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckTrade:Disable() end
 		vQueueFrame.filterCheckTrade:SetChecked(vQueueOptions["trade"])
@@ -1666,8 +1665,8 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheckLFG = CreateFrame("CheckButton", "optionsFilterCheckLFG", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckLFG:SetWidth(16)
 		vQueueFrame.filterCheckLFG:SetHeight(16)
-		_G[vQueueFrame.filterCheckLFG:GetName() .."Text"]:SetText("Looking For Group")
-		_G[vQueueFrame.filterCheckLFG:GetName() .."Text"]:SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckLFG:GetName() .."Text"):SetText("Looking For Group")
+		getglobal(vQueueFrame.filterCheckLFG:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
 		vQueueFrame.filterCheckLFG:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -54)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckLFG:Disable() end
 		vQueueFrame.filterCheckLFG:SetChecked(vQueueOptions["lfg"])
@@ -1682,8 +1681,8 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheckWorld = CreateFrame("CheckButton", "optionsFilterCheckWorld", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckWorld:SetWidth(16)
 		vQueueFrame.filterCheckWorld:SetHeight(16)
-		_G[vQueueFrame.filterCheckWorld:GetName() .."Text"]:SetText("World")
-		_G[vQueueFrame.filterCheckWorld:GetName() .."Text"]:SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckWorld:GetName() .."Text"):SetText("World")
+		getglobal(vQueueFrame.filterCheckWorld:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
 		vQueueFrame.filterCheckWorld:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -66)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckWorld:Disable() end
 		vQueueFrame.filterCheckWorld:SetChecked(vQueueOptions["world"])
@@ -1698,7 +1697,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheckOnlyFilter = CreateFrame("CheckButton", "optionsFilterCheckOnlyLfg", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckOnlyFilter:SetWidth(16)
 		vQueueFrame.filterCheckOnlyFilter:SetHeight(16)
-		_G[vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"]:SetText("Only hide LFG/LFM messages")
+		getglobal(vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"):SetText("Only hide LFG/LFM messages")
 		vQueueFrame.filterCheckOnlyFilter:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -80)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckOnlyFilter:Disable() end
 		vQueueFrame.filterCheckOnlyFilter:SetChecked(vQueueOptions["onlylfg"])
@@ -2285,26 +2284,26 @@ function vQueue_OnEvent(event)
 	if event == "CHAT_MSG_CHANNEL" then
 		if string.lower(arg9) ~= string.lower(channelName) then
 			local puncString = filterPunctuation(arg1)
-			for kLfm, vLfm in pairs(_G["LFMARGS"]) do
+			for kLfm, vLfm in pairs(getglobal("LFMARGS")) do
 				if Wholefind(puncString, vLfm) > 0 then
-					for kCat, kVal in pairs(_G["CATARGS"]) do
+					for kCat, kVal in pairs(getglobal("CATARGS")) do
 						for kkCat, kkVal in pairs(kVal) do
 							if Wholefind(puncString, kkVal) > 0 then
 								local exists = false
 								local healerRole = ""
 								local damageRole = ""
 								local tankRole = ""
-								for kHeal, vHeal in pairs(_G["ROLEARGS"]["Healer"]) do
+								for kHeal, vHeal in pairs(getglobal("ROLEARGS")["Healer"]) do
 									if Wholefind(puncString, vHeal) > 0 then
 										healerRole = "Healer"
 									end
 								end
-								for kDps, vDps in pairs(_G["ROLEARGS"]["Damage"]) do
+								for kDps, vDps in pairs(getglobal("ROLEARGS")["Damage"]) do
 									if Wholefind(puncString, vDps) > 0 then
 										damageRole = "Damage"
 									end
 								end
-								for kTank, vTank in pairs(_G["ROLEARGS"]["Tank"]) do
+								for kTank, vTank in pairs(getglobal("ROLEARGS")["Tank"]) do
 									if Wholefind(puncString, vTank) > 0 then
 										tankRole = "Tank"
 									end
@@ -2317,7 +2316,7 @@ function vQueue_OnEvent(event)
 								for kGroup, vGroup in pairs(groups[kCat]) do
 									local groupArgs = split(vGroup, "\:")
 									if groupArgs[2] == arg2 then
-										groups[kCat][kGroup] = "(Mouseover to see chat message)" .. ":" .. arg2 .. ":" .. _G["MINLVLS"][kCat] .. ":" .. "?" .. ":" .. "Role " .. healerRole .. " " .. damageRole .. " " .. tankRole
+										groups[kCat][kGroup] = "(Mouseover to see chat message)" .. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. "Role " .. healerRole .. " " .. damageRole .. " " .. tankRole
 										exists = true
 										break
 									end
@@ -2348,7 +2347,7 @@ function vQueue_OnEvent(event)
 								end
 								leaderMessages[arg2] = strippedStr .. ":" .. kCat .. ":" .. tostring(GetTime())
 								if not exists and kCat ~= "dm" then
-									table.insert(groups[kCat], tablelength(groups[kCat]), "(Mouseover to see chat message)" .. ":" .. arg2 .. ":" .. _G["MINLVLS"][kCat] .. ":" .. "?" .. ":" .. "Role " .. healerRole .. " " .. damageRole .. " " .. tankRole)		
+									table.insert(groups[kCat], tablelength(groups[kCat]), "(Mouseover to see chat message)" .. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. "Role " .. healerRole .. " " .. damageRole .. " " .. tankRole)		
 								end
 								if kCat == 'dm' then
 									if not setContains(whoRequestList, arg2) then addToSet(whoRequestList, arg2) end
@@ -2365,9 +2364,9 @@ function vQueue_OnEvent(event)
 				end
 			end
 			if isHost then
-			for kLfm, vLfm in pairs(_G["LFGARGS"]) do
+			for kLfm, vLfm in pairs(getglobal("LFGARGS")) do
 				if Wholefind(puncString, vLfm) > 0 then
-					for kCat, kVal in pairs(_G["CATARGS"]) do
+					for kCat, kVal in pairs(getglobal("CATARGS")) do
 						for kkCat, kkVal in pairs(kVal) do
 							for groupindex = 1,MAX_PARTY_MEMBERS do
 								if UnitName("party" .. tostring(groupindex)) == arg2 then return end
@@ -2375,17 +2374,17 @@ function vQueue_OnEvent(event)
 							if Wholefind(puncString, kkVal) > 0 and isHost and hostedCategory == kCat then
 								local exists = false
 								local playerRole = ""
-								for kHeal, vHeal in pairs(_G["ROLEARGS"]["Healer"]) do
+								for kHeal, vHeal in pairs(getglobal("ROLEARGS")["Healer"]) do
 									if Wholefind(puncString, vHeal) > 0 then
 										playerRole = "Healer"
 									end
 								end
-								for kDps, vDps in pairs(_G["ROLEARGS"]["Damage"]) do
+								for kDps, vDps in pairs(getglobal("ROLEARGS")["Damage"]) do
 									if Wholefind(puncString, vDps) > 0 then
 										playerRole = "Damage"
 									end
 								end
-								for kTank, vTank in pairs(_G["ROLEARGS"]["Tank"]) do
+								for kTank, vTank in pairs(getglobal("ROLEARGS")["Tank"]) do
 									if Wholefind(puncString, vTank) > 0 then
 										playerRole = "Tank"
 									end
@@ -2568,7 +2567,7 @@ function vQueue_OnEvent(event)
 				end
 				if groupString ~= "" then
 					local groupArgs = split(groupString, "\:")
-					local groupString = groupArgs[1] .. ":" .. groupArgs[2] .. ":" .. _G["MINLVLS"]["dm"] .. ":" .. groupArgs[4] .. ":" .. groupArgs[5]
+					local groupString = groupArgs[1] .. ":" .. groupArgs[2] .. ":" .. getglobal("MINLVLS")["dm"] .. ":" .. groupArgs[4] .. ":" .. groupArgs[5]
 					table.insert(groups["dm"], tablelength(groups["dm"]), groupString)
 				end
 				refreshCatList("dm")

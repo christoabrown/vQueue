@@ -14,7 +14,8 @@ LFGARGS = {
 	"any groups",
 	"any parties",
 	"any party",
-	"any partys"
+	"any partys",
+	"lf"
 }
 ROLEARGS = {
 	
@@ -170,7 +171,10 @@ CATARGS["armory"] = {
 CATARGS["cathedral"] = {
 	"cathedral",
 	"cath",
-	"smcath"
+	"smcath",
+	"smcathedral",
+	"smcathe",
+	"cathe"
 	--"sm full",
 	--"sm all"
 }
