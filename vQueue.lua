@@ -1334,12 +1334,12 @@ function vQueue_OnEvent(event)
 			isHost = false
 			isWaitListShown = false
 			--isFinding = false
-			for k, v in pairs(playersQueued) do
-				local playerQueuedArgs = split(k, "\:")
-				if not setContains(chatQueue, "vqdecline" .. "-WHISPER-" .. playerQueuedArgs[1]) then
-					addToSet(chatQueue, "vqdecline" .. "-WHISPER-" .. playerQueuedArgs[1])
-				end
-			end
+			-- for k, v in pairs(playersQueued) do
+				-- local playerQueuedArgs = split(k, "\:")
+				-- if not setContains(chatQueue, "vqdecline" .. "-WHISPER-" .. playerQueuedArgs[1]) then
+					-- addToSet(chatQueue, "vqdecline" .. "-WHISPER-" .. playerQueuedArgs[1])
+				-- end
+			-- end
 			vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistTopSection, "BOTTOMRIGHT", -65, 4)
 			playersQueued = {}
 			vQueueFrame.hostlist:Hide()
