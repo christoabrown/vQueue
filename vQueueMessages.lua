@@ -3,7 +3,14 @@ LFMARGS = {
 	"need",
 	"lf",
 	"spot",
-	"looking"
+	"looking",
+	"lfdd",
+	"lftank",
+	"lfheal",
+	"lfheals",
+	"lfdps",
+	"needed",
+	"more for"
 }
 LFGARGS = {
 	"lfg",
