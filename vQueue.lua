@@ -1,5 +1,4 @@
 local chatRate = 2 -- limit to 3 msg/sec
-local startTime = 0 -- used to get elapsed in onupdate
 local channelName = "vQueue"
 local filterEnabled = true -- chat filter
 
@@ -2524,7 +2523,7 @@ function vQueue_SlashCommandHandler( msg )
 		isHost = true
 		hostedCategory = args[2]
 		DEFAULT_CHAT_FRAME:AddMessage("Now hosting for " .. hostedCategory)
-		idleMessage = 30
+		idleMessage = 25
 		hostListFrame:Hide()
 		hostListFrame:Show()
 	elseif args[1] == "lfg" and args[2] ~= nil then
@@ -2562,10 +2561,7 @@ function refreshCatList(cat)
 end
 
 function vQueue_OnUpdate()
-	local elapsed = GetTime() - startTime
-	startTime = GetTime()
-	
-	whoRequestTimer = whoRequestTimer + elapsed
+	whoRequestTimer = whoRequestTimer + arg1
 	if whoRequestTimer > 2 then
 		whoRequestTimer = 0
 		if fixingChat then
@@ -2590,7 +2586,7 @@ function vQueue_OnUpdate()
 		end
 	end
 	
-	idleMessage = idleMessage + elapsed
+	idleMessage = idleMessage + arg1
 	if idleMessage > 30 and tablelength(chatQueue) == 0 then
 		idleMessage = 0
 		if (isFinding or isHost) and GetChannelName(channelName) < 1 then
@@ -2645,7 +2641,7 @@ function vQueue_OnUpdate()
 	
 	-- CHAT LIMITER
 	if(chatRate > 0) then
-		lastUpdate = lastUpdate + elapsed
+		lastUpdate = lastUpdate + arg1
 		-- MESSAGES TO SEND GO HERE
 		if (lastUpdate > (1/chatRate)) then
 			lastUpdate = 0
@@ -2660,7 +2656,6 @@ function vQueue_OnUpdate()
 			end
 		end
 	end
-	elapsed = 0
 end
 
 SlashCmdList["vQueue"] = vQueue_SlashCommandHandler
