@@ -21,7 +21,8 @@ LFGARGS = {
 	"any groups",
 	"any parties",
 	"any party",
-	"any partys"
+	"any partys",
+	"any one for"
 }
 ROLEARGS = {
 	
@@ -221,7 +222,8 @@ CATARGS["brd"] = {
 	"lava run"
 }
 CATARGS["lbrs"] = {
-	"lower",
+	"lower brs",
+	"lower blackrock",
 	"lbrs"
 }
 CATARGS["dm"] = {
@@ -251,7 +253,7 @@ CATARGS["ony"] = {
 }
 CATARGS["zg"] = {
 	"zg",
-	"zul",
+	"zul\'g",
 	"gurub"
 }
 CATARGS["mc"] = {
