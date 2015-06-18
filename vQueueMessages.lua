@@ -32,6 +32,7 @@ ROLEARGS["Healer"] = {
 	"healss",
 	"heal",
 	"healer",
+	"healers",
 	"disc",
 	"resto",
 	"restoration",
