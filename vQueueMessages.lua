@@ -10,7 +10,8 @@ LFMARGS = {
 	"lfheals",
 	"lfdps",
 	"needed",
-	"more for"
+	"more for",
+	"anyone for"
 }
 LFGARGS = {
 	"lfg",
@@ -57,14 +58,21 @@ ROLEARGS["Damage"] = {
 	"damage",
 	"deeps",
 	"hunter",
+	"hunters",
 	"hunt",
 	"hun",
 	"mage",
+	"mages",
 	"rogue",
+	"rogues",
 	"warlock",
 	"lock",
-	"war",
-	"warr",
+	"warlocks",
+	"wl",
+	"destro",
+	"destruction",
+	"afflic",
+	"affliction",
 	"arms",
 	"fury",
 	"enhance",
@@ -84,7 +92,10 @@ ROLEARGS["Damage"] = {
 	"mele",
 	"ranger",
 	"dd",
-	"ranged"
+	"ranged",
+	"rdps",
+	"mdps",
+	"cdps"
 }
 ROLEARGS["Tank"] = {
 	"tank",
@@ -150,10 +161,9 @@ CATARGS["graveyard"] = {
 	"gy",
 	"smgy",
 	"smgraveyard",
+	"smgrave",
 	"sm all",
 	"sm any"
-	--"sm full",
-	--"sm all"
 }
 CATARGS["library"] = {
 	"library",
@@ -162,8 +172,6 @@ CATARGS["library"] = {
 	"smlib",
 	"smlibrary",
 	"smlibs"
-	--"sm full",
-	--"sm all"
 }
 CATARGS["armory"] = {
 	"armory",
@@ -174,9 +182,8 @@ CATARGS["armory"] = {
 	"smarms",
 	"smarmory",
 	"smarm",
-	"smamory"
-	--"sm full",
-	--"sm all"
+	"smamory",
+	"armoruy"
 }
 CATARGS["cathedral"] = {
 	"cathedral",
@@ -185,20 +192,20 @@ CATARGS["cathedral"] = {
 	"smcathedral",
 	"smcathe",
 	"cathe"
-	--"sm full",
-	--"sm all"
 }
 CATARGS["rfd"] = {
 	"razorfen downs",
 	"razerfen downs",
 	"razorfen down",
 	"razerfen down",
-	"rfd"
+	"rfd",
+	"rfg"
 }
 CATARGS["ulda"] = {
 	"uldaman",
 	"ulda",
-	"uld"
+	"uld",
+	"ulduman"
 }
 CATARGS["zf"] = {
 	"zul farrak",
@@ -289,19 +296,22 @@ CATARGS["naxx"] = {
 CATARGS["wsg"] = {
 	"wsg",
 	"warsong",
-	"gulch"
+	"gulch",
+	"premade"
 }
 CATARGS["ab"] = {
 	"ab",
 	"arathi",
 	"basin",
-	"arati"
+	"arati",
+	"premade"
 }
 CATARGS["av"] = {
 	"av",
 	"alterac",
 	"valley",
-	"aterac"
+	"aterac",
+	"premade"
 }
 
 MINLVLS = {
