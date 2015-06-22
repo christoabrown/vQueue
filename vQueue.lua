@@ -1994,7 +1994,6 @@ function vQueue_UpdateCatScroll(value)
 				local vindex = VisibleIndex(catListButtons, k)
 				if catListButtons[0]:IsShown() then vindex = vindex + 1 end
 				if v:GetText() == catListButtons[0]:GetText() and v:IsShown() then vindex = 0 end
-				--if vindex == 0 then DEFAULT_CHAT_FRAME:AddMessage(v:GetText()) end
 				local point, relativeTo, relativePoint, xOffset, yOffset = v:GetPoint()
 				v:SetPoint("TOPLEFT", vQueueFrame.catList, "TOPLEFT",  xOffset, vindex*-10)
 			end
