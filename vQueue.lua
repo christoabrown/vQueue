@@ -2287,17 +2287,6 @@ function vQueue_newButton(parentFrame, FontSize)
 	newButton:SetHeight(FontSize+2)
 	
 	local borderColor = {0.05, 0.05, 0.05, 1}
-	-- topBorder = newButton:CreateTexture(nil, "OVERLAY")
-	-- topBorder:SetPoint("TOPLEFT", newButton, "TOPLEFT")
-	-- topBorder:SetPoint("TOPRIGHT", newButton, "TOPRIGHT")
-	-- topBorder:SetTexture(borderColor[1], borderColor[2], borderColor[3], borderColor[4])
-	-- topBorder:SetHeight(1)
-	
-	-- bottomBorder = newButton:CreateTexture(nil, "OVERLAY")
-	-- bottomBorder:SetPoint("BOTTOMLEFT", newButton, "BOTTOMLEFT")
-	-- bottomBorder:SetPoint("BOTTOMRIGHT", newButton, "BOTTOMRIGHT")
-	-- bottomBorder:SetTexture(borderColor[1], borderColor[2], borderColor[3], borderColor[4])
-	-- bottomBorder:SetHeight(0.5)
 	
 	leftBorder = newButton:CreateTexture(nil, "OVERLAY")
 	leftBorder:SetPoint("TOPLEFT", newButton, "TOPLEFT")

@@ -23,7 +23,8 @@ LFGARGS = {
 	"any parties",
 	"any party",
 	"any partys",
-	"any one for"
+	"any one for",
+	"for hire"
 }
 ROLEARGS = {
 	
@@ -95,7 +96,8 @@ ROLEARGS["Damage"] = {
 	"ranged",
 	"rdps",
 	"mdps",
-	"cdps"
+	"cdps",
+	"dds"
 }
 ROLEARGS["Tank"] = {
 	"tank",
@@ -209,6 +211,9 @@ CATARGS["ulda"] = {
 }
 CATARGS["zf"] = {
 	"zul farrak",
+	"zulfarak",
+	"zul farak",
+	"zulfarrak",
 	"zf"
 }
 CATARGS["mara"] = {
@@ -238,7 +243,8 @@ CATARGS["dm"] = {
 	"dire",
 	"maul",
 	"dm",
-	"tribute"
+	"tribute",
+	"trib"
 }
 CATARGS["strat"] = {
 	"stratholme",
@@ -303,15 +309,13 @@ CATARGS["ab"] = {
 	"ab",
 	"arathi",
 	"basin",
-	"arati",
-	"premade"
+	"arati"
 }
 CATARGS["av"] = {
 	"av",
 	"alterac",
 	"valley",
-	"aterac",
-	"premade"
+	"aterac"
 }
 
 MINLVLS = {
