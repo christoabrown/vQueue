@@ -4,7 +4,7 @@
 ## Notes: Utility for group finding.
 ## SavedVariables: MinimapPos, vQueueOptions, notCaught
 ## SavedVariablesPerCharacter: selectedRole, isFinding
-## Version: 1.2.1
+## Version: 1.2.2
 
 Libs\AceLibrary\AceLibrary.lua
 Libs\AceOO-2.0\AceOO-2.0.lua

@@ -271,7 +271,7 @@ function vQueue_OnEvent(event)
 			"The Sunken Temple:st",
 			"Blackrock Depths:brd",
 			"Lower Blackrock:lbrs",
-			"Dire Maul:dm",
+			"Dire Maul:dem",
 			"Stratholme:strat",
 			"Scholomance:scholo"
 		
@@ -680,7 +680,7 @@ function vQueue_OnEvent(event)
 				return
 			end
 			titleDung = selectedQuery
-			if titleDung == "dead" then titleDung = "DM" end
+			if titleDung == "dead" then titleDung = "VC" end
 			vQueueFrame.hostlistNameField:SetText("LFM " .. string.upper(selectedQuery) .. " - " .. getglobal("MINLVLS")[selectedQuery] .. "+ need all")
 			vQueueFrame.hostlistHostButton:Hide()
 			isWaitListShown = true
@@ -1350,13 +1350,13 @@ function vQueue_OnEvent(event)
 		minimapButton.notifyText:SetAllPoints()
 		minimapButton.notifyText:Hide()
 		minimapButton:SetScript("OnMouseDown", function()
-			point, relativeTo, relativePoint, xOffset, yOffset = minimapButton.texture:GetPoint(1)
+			point, relativeTo, relativePoint, xOffset, yOffset = this.texture:GetPoint(1)
 			minimapButton.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
 		end);
 		minimapButton:SetScript("OnLeave", function(self, button)
 			MinimapTool:Hide()
-			minimapButton.notifyText:Hide()
-			minimapButton.texture:SetPoint("CENTER", minimapButton)
+			this.notifyText:Hide()
+			this.texture:SetPoint("CENTER", minimapButton)
 		end);
 		minimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
@@ -1372,7 +1372,7 @@ function vQueue_OnEvent(event)
 					vQueueFrameShown = true
 				end
 			end
-			minimapButton.texture:SetPoint("CENTER", minimapButton)
+			this.texture:SetPoint("CENTER", minimapButton)
 		end);
 		minimapButton:SetScript("OnDragStart", function()
 			miniDrag = true
@@ -1531,12 +1531,8 @@ function vQueue_OnEvent(event)
 									end
 								end
 								leaderMessages[arg2] = strippedStr .. ":" .. kCat .. ":" .. tostring(GetTime())
-								if kCat ~= "dm" then
-									vQueue_addToGroup(kCat, "(Mouseover to see chat message)" .. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
-								end
-								if kCat == 'dm' then
-									if not setContains(whoRequestList, arg2) then addToSet(whoRequestList, arg2) end
-								end
+								
+								vQueue_addToGroup(kCat, strippedStr.. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
 								refreshCatList(kCat)
 								break
 							end
@@ -1639,7 +1635,7 @@ function vQueue_OnEvent(event)
 	end
 	
 	if event == "WHO_LIST_UPDATE" then
-		vQueue_WhoSorting()
+		--vQueue_WhoSorting()
 		
 		if tablelength(whoRequestList) > 0 then
 			for i=1, GetNumWhoResults() do
@@ -1943,10 +1939,10 @@ function vQueue_addToWaitList(playerinfo)
 end
 
 function vQueue_WhoSorting()
-	for i=1, GetNumWhoResults() do
+--[[	for i=1, GetNumWhoResults() do
 		name, guild, level, race, class, zone, classFileName, sex = GetWhoInfo(i)
 		if leaderMessages[name] ~= nil and level > 40 and groups["dead"][name] ~= nil then
-			groups["dm"][name] = groups["dead"][name]
+			groups["dem"][name] = groups["dead"][name]
 			if selectedQuery == "dead" then groups["dead"][name]:Hide() end
 			groups["dead"][name] = nil	
 			local thisframe, bg, name, level = groups["dm"][name]:GetRegions()
@@ -1964,6 +1960,7 @@ function vQueue_WhoSorting()
 			vQueue_ShowGroups(selectedCat, selectedCat)
 		end
 	end
+]]
 end
 
 -- return the first integer index holding the value
@@ -2028,6 +2025,7 @@ function vQueue_UpdateHostScroll(value)
 end
 
 function getDifficultyColor(levelKey, playerLevel)
+	if not levelKey then return {1,1,0}; end
 	local color = {}
 	if (levelKey - playerLevel) >= 5 then
 		color[1] = 1
@@ -2117,7 +2115,8 @@ function vQueue_addToGroup(category, groupinfo)
 						if seconds < 10 then
 							seconds = "0" .. tostring(seconds)
 						end
-						this:SetText("(Mouseover to see chat message) " .. tostring(minute) .. ":" .. tostring(seconds) )
+						local msg = string.len(timeSplit[1])>29 and (string.sub(timeSplit[1],1,27).."...") or timeSplit[1]
+						this:SetText(msg.." " .. tostring(minute) .. ":" .. tostring(seconds) )
 						this:SetWidth(this:GetTextWidth())
 					end
 				end
