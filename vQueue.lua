@@ -1628,6 +1628,8 @@ function vQueue_OnEvent(event)
 				end
 				leaderMessages[arg2] = strippedStr .. ":" .. vQueueArgs[2] .. ":" .. GetTime()
 				
+				if vQueueArgs[2] == "dm" then vQueueArgs[2]="dem" end -- OLD Version
+				
 				vQueue_addToGroup(vQueueArgs[2], strippedStr .. ":" .. arg2 .. ":" .. vQueueArgs[3] .. ":" .. vQueueArgs[4] .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
 				refreshCatList(vQueueArgs[2])
 			end	
