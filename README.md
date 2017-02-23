@@ -1,5 +1,13 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### V1.2.3
+
+- Fixed many errors
+- Added Hazar's improvements
+- Improved Start New Group dialog
+- some minor improvements
+- fixed "LFM DEM"
+
 ### v1.2
  * rewrote frame creation for groups, categories, and the wait list should be lest wasteful and load quicker
  * vQueue will now only hide chat messages that are used (if the option selected)

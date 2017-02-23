@@ -194,6 +194,18 @@ function filterPunctuation( s )
 	return newString
 end
 
+local function vQueue_hostlistNameFieldUpdate()
+	local minLvl = tonumber(vQueueFrame.hostlistLevelField:GetText()) or 0
+	local needMates = healerSelected and damageSelected and tankSelected and "need all" or ""
+	if needMates == "" then
+		needMates =  tankSelected and "tank"
+		needMates = (healerSelected and tankSelected and ( needMates .. ", heal")) or (healerSelected and "heal") or needMates
+		needMates = (damageSelected and (tankSelected or healerSelected)) and ( needMates .. ", dps") or (damageSelected and "dps") or needMates
+		needMates = needMates ~= "" and ("need ".. needMates) or ""
+	end
+	vQueueFrame.hostlistNameField:SetText("LFM " .. string.upper(titleDung) .. " - " .. minLvl .. "+ "..needMates)
+end
+
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
 		findTimer = GetTime() - 10
@@ -680,8 +692,8 @@ function vQueue_OnEvent(event)
 				return
 			end
 			titleDung = selectedQuery
-			if titleDung == "dead" then titleDung = "VC" end
-			vQueueFrame.hostlistNameField:SetText("LFM " .. string.upper(selectedQuery) .. " - " .. getglobal("MINLVLS")[selectedQuery] .. "+ need all")
+			titleDung = (selectedQuery == "dead" and "VC") or (selectedQuery == "dem" and "DM") or selectedQuery
+			
 			vQueueFrame.hostlistHostButton:Hide()
 			isWaitListShown = true
 			vQueueFrame.hostTitleFindName:Hide()
@@ -699,6 +711,7 @@ function vQueue_OnEvent(event)
 			hostedCategory = selectedQuery
 			prevSelected = selectedQuery
 			selectedQuery = "waitlist"
+			vQueue_hostlistNameFieldUpdate()
 			vQueue_ShowGroups(selectedQuery, prevSelected)
 		end)
 		vQueueFrame.hostlistHostButton:SetScript("OnEnter", function()
@@ -884,6 +897,9 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistLevelField:SetWidth(20)
 		vQueueFrame.hostlistLevelField:SetHeight(18)
 		vQueueFrame.hostlistLevelField:SetFrameLevel(4)
+		vQueueFrame.hostlistLevelField:SetScript("OnTextChanged", function()
+			vQueue_hostlistNameFieldUpdate()
+		end)
 		
 		vQueueFrame.hostlistLevelFieldText = CreateFrame("Button", nil, vQueueFrame.hostlistLevelField)
 		vQueueFrame.hostlistLevelFieldText:ClearAllPoints()
@@ -1114,6 +1130,7 @@ function vQueue_OnEvent(event)
 			else
 				vQueueFrame.hostlistHostHealCheck:Hide()
 			end
+			vQueue_hostlistNameFieldUpdate()
 		end)
 		vQueueFrame.hostlistHostHealer:SetScript("OnEnter", function()
 			vQueueFrame.hostlistHostHealerTex:SetVertexColor(1, 1, 0)
@@ -1144,6 +1161,7 @@ function vQueue_OnEvent(event)
 			else
 				vQueueFrame.hostlistHostDamageCheck:Hide()
 			end
+			vQueue_hostlistNameFieldUpdate()
 		end)
 		vQueueFrame.hostlistHostDamage:SetScript("OnEnter", function()
 			vQueueFrame.hostlistHostDamageTex:SetVertexColor(1, 1, 0)
@@ -1174,6 +1192,7 @@ function vQueue_OnEvent(event)
 			else
 				vQueueFrame.hostlistHostTankCheck:Hide()
 			end
+			vQueue_hostlistNameFieldUpdate()
 		end)
 		vQueueFrame.hostlistHostTank:SetScript("OnEnter", function()
 			vQueueFrame.hostlistHostTankTex:SetVertexColor(1, 1, 0)
@@ -1356,7 +1375,7 @@ function vQueue_OnEvent(event)
 		minimapButton:SetScript("OnLeave", function(self, button)
 			MinimapTool:Hide()
 			this.notifyText:Hide()
-			this.texture:SetPoint("CENTER", minimapButton)
+			this.texture:SetPoint("CENTER", minimapButton,0,0)
 		end);
 		minimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
@@ -2351,12 +2370,16 @@ function vQueue_OnUpdate()
 	if whoRequestTimer > 2 then
 		whoRequestTimer = 0
 		if fixingChat then
+			DEFAULT_CHAT_FRAME:AddMessage("vQueue: JoinChannelByName not working properly.")
+			DEFAULT_CHAT_FRAME:AddMessage("vQueue: So you need join channels manualy or in macro: 1 channel per macro")
+			DEFAULT_CHAT_FRAME:AddMessage("vQueue: (/join lookingforgroup) (/join world) - PS: dont use caps")
+			DEFAULT_CHAT_FRAME:AddMessage("vQueue: after it reopen vQueue")
 			JoinChannelByName("General")
 			JoinChannelByName("Trade")
 			JoinChannelByName("LocalDefense")
-			JoinChannelByName("LookingForGroup")
-			JoinChannelByName("World")
-			JoinChannelByName("vQueue")
+--			JoinChannelByName("LookingForGroup")
+--			JoinChannelByName("world")
+--			JoinChannelByName(channelName)
 			fixingChat = false
 		end
 		if tablelength(whoRequestList) > 0 and not FriendsFrame:IsShown() then
