@@ -208,9 +208,9 @@ end
 
 local function vQueue_hostlistNameFieldUpdate()
 	local minLvl = tonumber(vQueueFrame.hostlistLevelField:GetText()) or 0
-	local needMates = healerSelected and damageSelected and tankSelected and "need all" or ""
+	local needMates = (healerSelected and damageSelected and tankSelected) and "need all" or ""
 	if needMates == "" then
-		needMates =  tankSelected and "tank"
+		needMates =  tankSelected and "tank" or ""
 		needMates = (healerSelected and tankSelected and ( needMates .. ", heal")) or (healerSelected and "heal") or needMates
 		needMates = (damageSelected and (tankSelected or healerSelected)) and ( needMates .. ", dps") or (damageSelected and "dps") or needMates
 		needMates = needMates ~= "" and ("need ".. needMates) or ""
@@ -1402,42 +1402,42 @@ function vQueue_OnEvent(event)
 		
 		
 		DEFAULT_CHAT_FRAME:AddMessage("Loaded " .. arg1)
-		minimapButton = CreateFrame("Button", "vQueueMap", Minimap)
-		minimapButton:SetFrameStrata("HIGH")
-		minimapButton:SetWidth(32)
-		minimapButton:SetHeight(32)
-		minimapButton:ClearAllPoints()
-		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",MinimapPos.x,MinimapPos.y) 
+		vQueueminimapButton = CreateFrame("Button", "vQueueMap", Minimap)
+		vQueueminimapButton:SetFrameStrata("HIGH")
+		vQueueminimapButton:SetWidth(32)
+		vQueueminimapButton:SetHeight(32)
+		vQueueminimapButton:ClearAllPoints()
+		vQueueminimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",MinimapPos.x,MinimapPos.y) 
 		
-		minimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
-		minimapButton:RegisterForDrag("RightButton")
-		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
-		minimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
-		minimapButton.texture:SetPoint("CENTER", minimapButton)
-		minimapButton.texture:SetWidth(20)
-		minimapButton.texture:SetHeight(20)
+		vQueueminimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
+		vQueueminimapButton:RegisterForDrag("RightButton")
+		vQueueminimapButton.texture = vQueueminimapButton:CreateTexture(nil, "BUTTON")
+		vQueueminimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
+		vQueueminimapButton.texture:SetPoint("CENTER", vQueueminimapButton)
+		vQueueminimapButton.texture:SetWidth(20)
+		vQueueminimapButton.texture:SetHeight(20)
 		
-		minimapButton.border = minimapButton:CreateTexture(nil, "BORDER")
-		minimapButton.border:SetTexture("Interface\\MINIMAP\\MiniMap-TrackingBorder")
-		minimapButton.border:SetPoint("TOPLEFT", minimapButton.texture, -6, 5)
-		minimapButton.border:SetWidth(52)
-		minimapButton.border:SetHeight(52)
+		vQueueminimapButton.border = vQueueminimapButton:CreateTexture(nil, "BORDER")
+		vQueueminimapButton.border:SetTexture("Interface\\MINIMAP\\MiniMap-TrackingBorder")
+		vQueueminimapButton.border:SetPoint("TOPLEFT", vQueueminimapButton.texture, -6, 5)
+		vQueueminimapButton.border:SetWidth(52)
+		vQueueminimapButton.border:SetHeight(52)
 		
-		minimapButton.notifyText = minimapButton:CreateTexture(nil, "OVERLAY")
-		minimapButton.notifyText:SetTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight")
-		minimapButton.notifyText:SetBlendMode("ADD")
-		minimapButton.notifyText:SetAllPoints()
-		minimapButton.notifyText:Hide()
-		minimapButton:SetScript("OnMouseDown", function()
+		vQueueminimapButton.notifyText = vQueueminimapButton:CreateTexture(nil, "OVERLAY")
+		vQueueminimapButton.notifyText:SetTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight")
+		vQueueminimapButton.notifyText:SetBlendMode("ADD")
+		vQueueminimapButton.notifyText:SetAllPoints()
+		vQueueminimapButton.notifyText:Hide()
+		vQueueminimapButton:SetScript("OnMouseDown", function()
 			point, relativeTo, relativePoint, xOffset, yOffset = this.texture:GetPoint(1)
 			this.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
 		end);
-		minimapButton:SetScript("OnLeave", function(self, button)
+		vQueueminimapButton:SetScript("OnLeave", function(self, button)
 			MinimapTool:Hide()
 			this.notifyText:Hide()
-			this.texture:SetPoint("CENTER", minimapButton,0,0)
+			this.texture:SetPoint("CENTER", vQueueminimapButton,0,0)
 		end);
-		minimapButton:SetScript("OnMouseUp", function()
+		vQueueminimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
 				if vQueueDB.FrameShown then 
 					vQueueFrame:Hide() 
@@ -1451,15 +1451,15 @@ function vQueue_OnEvent(event)
 					vQueueDB.FrameShown = true
 				end
 			end
-			this.texture:SetPoint("CENTER", minimapButton)
+			this.texture:SetPoint("CENTER", vQueueminimapButton)
 		end);
-		minimapButton:SetScript("OnDragStart", function()
+		vQueueminimapButton:SetScript("OnDragStart", function()
 			miniDrag = true
 		end)
-		minimapButton:SetScript("OnDragStop", function()
+		vQueueminimapButton:SetScript("OnDragStop", function()
 			miniDrag = false
 		end)
-		minimapButton:SetScript("OnUpdate", function()
+		vQueueminimapButton:SetScript("OnUpdate", function()
 			if miniDrag then
 				local xpos,ypos = GetCursorPosition();
 				local xmin,ymin,xm,ym = Minimap:GetLeft(), Minimap:GetBottom(), Minimap:GetRight(), Minimap:GetTop();
@@ -1484,8 +1484,8 @@ function vQueue_OnEvent(event)
 			end
 		end)
 		CreateFrame( "GameTooltip", "MinimapTool", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
-		minimapButton:SetScript("OnEnter", function()
-			if vQueueDB.isHost then
+		vQueueminimapButton:SetScript("OnEnter", function()
+			if vQueueDB.isHost then -- layt
 				MinimapTool:SetOwner( this, "ANCHOR_CURSOR" );
 				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. " player(s) in your wait list.", 1, 1, 1, 1)
 				MinimapTool:Show()
@@ -1494,7 +1494,7 @@ function vQueue_OnEvent(event)
 		MinimapTool:SetScript("OnUpdate", function()
 			if this:IsShown() then
 				this:Hide()
-				MinimapTool:SetOwner( minimapButton, "ANCHOR_CURSOR" );
+				MinimapTool:SetOwner( vQueueminimapButton, "ANCHOR_CURSOR" );
 				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. " player(s) in your wait list.", 1, 1, 1, 1)
 				MinimapTool:Show()
 			end
@@ -1562,7 +1562,7 @@ function vQueue_OnEvent(event)
 		vQueue_createCategories("Quest Groups")
 		vQueue_createCategories("Miscellaneous")
 
-		minimapButton:Show()
+		vQueueminimapButton:Show()
 		vQueueFrame:Hide()
 		vQueueFrame.catList:Hide()
 		vQueueFrame.hostlist:Hide()
@@ -2031,7 +2031,7 @@ function vQueue_addToWaitList(playerinfo)
 				end
 			end
 		end)
-		if not vQueueFrame:IsShown() then minimapButton.notifyText:Show() end
+		if not vQueueFrame:IsShown() then vQueueminimapButton.notifyText:Show() end
 		groups["waitlist"][args[1]] = newWaitEntry
 	end
 	if selectedQuery == "waitlist" and vQueueDB.isWaitListShown then 
