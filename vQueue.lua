@@ -1,21 +1,18 @@
+local vQueueDB = {}
+
 local chatRate = 2 -- limit to 2 msg/sec
 local channelName = "vQueue"
-local filterEnabled = true -- chat filter
 
-local isHost = false
 local hostedCategory = ""
 local realHostedCategory = ""
 local playersQueued = {}
 local chatQueue = {}
 local groups = {}
-
+local notifyForDungeon = ""
 local vQueueFrame = {}
 local catListButtons = {}
-local vQueueFrameShown = false
 local selectedQuery = ""
 local selectedCat = ""
-local isWaitListShown = false
-
 local categories = {}
 local hostListButtons = {}
 local hostListFrame
@@ -35,10 +32,21 @@ local fixingChat = false
 local lastUpdate = 0
 local whoRequestTimer = 0
 local idleMessage = 0
-
 local tankSelected = false
 local healerSelected = false
 local damageSelected = false
+
+do 
+	local _, class2 = UnitClass'player'
+	vQueueDB.class = string.lower(class2)
+	vQueueDB.inCombat = false
+	vQueueDB.isHost = false
+	vQueueDB.isWaitListShown = false
+	vQueueDB.FrameShown = false
+	vQueueDB.filterEnabled = true -- chat filter
+end
+
+
 
 local vQueueColors = {
 }
@@ -160,15 +168,17 @@ function vQueue:AddMessage(frame, text, r, g, b, id)
 	end
 	if strfind(event,"CHAT_MSG_CHANNEL") or strfind(event, "CHAT_MSG_CHANNEL_JOIN") or strfind(event, "CHAT_MSG_CHANNEL_LEAVE") or strfind(event, "CHAT_MSG_CHANNEL_NOTICE") then
 		arg9 = string.lower(arg9)
-		if (strfind(arg9, channelName)) and filterEnabled then
+		if (strfind(arg9, channelName)) and vQueueDB.filterEnabled then
 			blockMsg = true
 		end
 	end
-	if (Wholefind(tostring(text), "vqgroup") > 0 or Wholefind(tostring(text), "vqrequest") > 0 or Wholefind(tostring(text), "vqaccept") > 0 or Wholefind(tostring(text), "vqdecline") > 0 or Wholefind(tostring(text), "vqremove") > 0) and filterEnabled then
+	if (Wholefind(tostring(text), "vqgroup") > 0 or Wholefind(tostring(text), "vqrequest") > 0 or Wholefind(tostring(text), "vqaccept") > 0 or Wholefind(tostring(text), "vqdecline") > 0 or Wholefind(tostring(text), "vqremove") > 0) and vQueueDB.filterEnabled then
 		blockMsg = true
 	end
 	if not blockMsg then
-		 self.hooks[frame].AddMessage(frame, string.format("%s", text), r, g, b, id)
+		 self.hooks[frame].AddMessage(frame, tostring(text), r, g, b, id)
+	--self.hooks[frame].AddMessage(frame, string.format("%s", text), r, g, b, id) --update ???
+
 	end
 end
 
@@ -177,6 +187,8 @@ function vQueue_OnLoad()
 	this:RegisterEvent("CHAT_MSG_CHANNEL");
 	this:RegisterEvent("CHAT_MSG_WHISPER");
 	this:RegisterEvent("WHO_LIST_UPDATE");
+	this:RegisterEvent("PLAYER_REGEN_ENABLED");
+	this:RegisterEvent("PLAYER_REGEN_DISABLED");
 end
 
 function filterPunctuation( s )
@@ -209,8 +221,9 @@ end
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
 		findTimer = GetTime() - 10
-		if MinimapPos == nil then
-			MinimapPos = -30
+		if MinimapPos == nil or type(MinimapPos) == "number" then
+			MinimapPos = {}
+			MinimapPos.x, MinimapPos.y = {-180,-17}
 		end
 		if vQueueOptions == nil then
 			vQueueOptions = {}
@@ -347,7 +360,7 @@ function vQueue_OnEvent(event)
 			vQueueFrame:StartMoving()
 			vQueueFrame.hostlistNameField:ClearFocus()
 			vQueueFrame.hostlistLevelField:ClearFocus()
-			if isHost or isFinding then
+			if vQueueDB.isHost or isFinding then
 				vQueueFrame.hostlistRoleText:SetText("")
 			end
 		end)
@@ -371,7 +384,7 @@ function vQueue_OnEvent(event)
 			vQueueFrame:Hide()
 			vQueueFrame.catList:Hide()
 			vQueueFrame.hostlist:Hide()
-			vQueueFrameShown = false
+			vQueueDB.FrameShown = false
 		end)
 		
 		vQueueFrame.optionsButton = vQueue_newButton(vQueueFrame, 10)
@@ -682,6 +695,52 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistRoleText:SetText("")
 		end
 		
+-- Sven Button
+
+		vQueueFrame.watchListButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
+		vQueueFrame.watchListButton:SetPoint("BOTTOMLEFT", vQueueFrame.hostlistTopSection, "BOTTOMLEFT", 3, 5)
+		vQueueFrame.watchListButton:SetText("Notify about groups")
+		vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+10)
+		vQueueFrame.watchListButton:SetScript("OnClick", function()
+			titleDung = selectedQuery
+			notifyForDungeon = titleDung
+			vQueueFrame.watchListButton:SetText("Notified for " .. notifyForDungeon)
+			vQueueFrame.clearNotifyButton:Show()
+		end)
+
+		vQueueFrame.clearNotifyButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
+		vQueueFrame.clearNotifyButton:SetPoint("BOTTOMLEFT", vQueueFrame.hostlistTopSection, "BOTTOMLEFT", 115, 5)
+		vQueueFrame.clearNotifyButton:SetText("Clear")
+		vQueueFrame.clearNotifyButton:SetWidth(vQueueFrame.clearNotifyButton:GetTextWidth()+10)
+		vQueueFrame.clearNotifyButton:SetScript("OnClick", function()
+			notifyForDungeon = ""
+			vQueueFrame.watchListButton:SetText("Notify about groups")
+			vQueueFrame.clearNotifyButton:Hide()
+		end)
+		vQueueFrame.clearNotifyButton:Hide()
+
+		vQueueFrame.watchListButton:SetScript("OnEnter", function()
+			playerQueueToolTip:SetOwner( this, "ANCHOR_CURSOR" );
+			playerQueueToolTip:AddLine("Don't forget to choose role on the right side", 1, 1, 1, 1)
+			playerQueueToolTip:Show()
+		end)
+
+		vQueueFrame.clearNotifyButton:SetScript("OnEnter", function()
+			playerQueueToolTip:SetOwner( this, "ANCHOR_CURSOR" );
+			playerQueueToolTip:AddLine("Clears the search, you will not be notified anymore", 1, 1, 1, 1)
+			playerQueueToolTip:Show()
+		end)
+
+		vQueueFrame.watchListButton:SetScript("OnLeave", function()
+			playerQueueToolTip:Hide()
+		end)
+
+		vQueueFrame.clearNotifyButton:SetScript("OnLeave", function()
+			playerQueueToolTip:Hide()
+		end)
+
+-- Sven Button Ende
+		
 		vQueueFrame.hostlistHostButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
 		vQueueFrame.hostlistHostButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistTopSection, "BOTTOMRIGHT", -3, 5)
 		vQueueFrame.hostlistHostButton:SetText("Start new group")
@@ -695,7 +754,7 @@ function vQueue_OnEvent(event)
 			titleDung = (selectedQuery == "dead" and "VC") or (selectedQuery == "dem" and "DM") or selectedQuery
 			
 			vQueueFrame.hostlistHostButton:Hide()
-			isWaitListShown = true
+			vQueueDB.isWaitListShown = true
 			vQueueFrame.hostTitleFindName:Hide()
 			vQueueFrame.hostTitleFindLeader:Hide()
 			vQueueFrame.hostTitleFindLevel:Hide()
@@ -730,7 +789,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistEditButton:SetWidth(vQueueFrame.hostlistEditButton:GetTextWidth()+5)
 		vQueueFrame.hostlistEditButton:SetScript("OnClick", function()
 			vQueueFrame.hostlistEditButton:Hide()
-			isWaitListShown = true
+			vQueueDB.isWaitListShown = true
 			scrollbar:SetValue(1)
 			prevSelected = selectedQuery
 			selectedQuery = "waitlist"
@@ -760,8 +819,8 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistLevelField:Hide()
 			vQueueFrame.hostlistNameField:Hide()
 			vQueueFrame.hostlistCreateButton:Hide()
-			isHost = false
-			isWaitListShown = false
+			vQueueDB.isHost = false
+			vQueueDB.isWaitListShown = false
 			vQueueFrame.hostTitle:Hide()
 			vQueueFrame.hostTitleRole:Hide()
 			vQueueFrame.hostTitleClass:Hide()
@@ -799,7 +858,7 @@ function vQueue_OnEvent(event)
 					vQueueFrame.catListHighlight:Show()
 				end
 			end
-			isWaitListShown = true
+			vQueueDB.isWaitListShown = true
 			vQueueFrame.hostTitle:Show()
 			vQueueFrame.hostTitleRole:Show()
 			vQueueFrame.hostTitleClass:Show()
@@ -1217,7 +1276,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistCancelButton:SetWidth(vQueueFrame.hostlistCancelButton:GetTextWidth()+20)
 		vQueueFrame.hostlistCancelButton:SetFrameLevel(4)
 		vQueueFrame.hostlistCancelButton:SetScript("OnClick", function()
-			isWaitListShown = false
+			vQueueDB.isWaitListShown = false
 			if selectedQuery == "waitlist" then selectedQuery = hostedCategory end
 			vQueue_ShowGroups(selectedQuery, selectedQuery)
 			vQueueFrame.hostTitleFindName:Show()
@@ -1281,7 +1340,7 @@ function vQueue_OnEvent(event)
 				vQueueFrame.topsectionHostName:Show()
 				vQueueFrame.hostlistBotShadow:SetHeight(40)
 				if tablelength(groups[selectedQuery]) > 16 then vQueueFrame.hostlistBotShadow:Show() else vQueueFrame.hostlistBotShadow:Hide() end
-				if isHost then return end
+				if vQueueDB.isHost then return end
 				vQueue_SlashCommandHandler( "host " .. selectedQuery )
 			end
 		end)
@@ -1348,7 +1407,8 @@ function vQueue_OnEvent(event)
 		minimapButton:SetWidth(32)
 		minimapButton:SetHeight(32)
 		minimapButton:ClearAllPoints()
-		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",54-(75*cos(MinimapPos)),(75*sin(MinimapPos))-55) 
+		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",MinimapPos.x,MinimapPos.y) 
+		
 		minimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
 		minimapButton:RegisterForDrag("RightButton")
 		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
@@ -1370,7 +1430,7 @@ function vQueue_OnEvent(event)
 		minimapButton.notifyText:Hide()
 		minimapButton:SetScript("OnMouseDown", function()
 			point, relativeTo, relativePoint, xOffset, yOffset = this.texture:GetPoint(1)
-			minimapButton.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
+			this.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
 		end);
 		minimapButton:SetScript("OnLeave", function(self, button)
 			MinimapTool:Hide()
@@ -1379,16 +1439,16 @@ function vQueue_OnEvent(event)
 		end);
 		minimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
-				if vQueueFrameShown then 
+				if vQueueDB.FrameShown then 
 					vQueueFrame:Hide() 
 					vQueueFrame.catList:Hide()
 					vQueueFrame.hostlist:Hide()
-					vQueueFrameShown = false
+					vQueueDB.FrameShown = false
 				else
 					vQueueFrame:Show() 
 					vQueueFrame.catList:Show()
 					vQueueFrame.hostlist:Show()
-					vQueueFrameShown = true
+					vQueueDB.FrameShown = true
 				end
 			end
 			this.texture:SetPoint("CENTER", minimapButton)
@@ -1401,22 +1461,31 @@ function vQueue_OnEvent(event)
 		end)
 		minimapButton:SetScript("OnUpdate", function()
 			if miniDrag then
-				    local xpos,ypos = GetCursorPosition() 
-					local xmin,ymin = Minimap:GetLeft(), Minimap:GetBottom() 
-
-					xpos = xmin-xpos/UIParent:GetScale()+70 
-					ypos = ypos/UIParent:GetScale()-ymin-70 
-					
-					MinimapPos = math.deg(math.atan2(ypos,xpos))
-					if (MinimapPos < 0) then
-						MinimapPos = MinimapPos + 360
+				local xpos,ypos = GetCursorPosition();
+				local xmin,ymin,xm,ym = Minimap:GetLeft(), Minimap:GetBottom(), Minimap:GetRight(), Minimap:GetTop();
+				local scale = Minimap:GetEffectiveScale();
+				local xdelta, ydelta = (xm - xmin)/2*scale, (ym - ymin) /2 * scale;
+				xpos = xmin*scale-xpos+xdelta;
+				ypos = ypos-ymin*scale-ydelta;
+				local angle = math.deg(math.atan2(ypos,xpos));
+				local	x,y =0,0;
+				if (Squeenix or (simpleMinimap_Skins and simpleMinimap_Skins:GetShape() == "square")
+							or (pfUI and pfUI_config["disabled"]["minimap"] ~= "1")) then
+					x = math.max(-xdelta, math.min((xdelta*1.5) * cos(angle), xdelta))
+					y = math.max(-ydelta, math.min((ydelta*1.5) * sin(angle), ydelta))
+				else
+					x= cos(angle)*xdelta
+					y= sin(angle)*ydelta
 					end
-					this:SetPoint("TOPLEFT", Minimap,"TOPLEFT",54-(75*cos(MinimapPos)),(75*sin(MinimapPos))-55) 
+				local sc= this:GetEffectiveScale()
+				MinimapPos.x = (xdelta-x)/sc - 17
+				MinimapPos.y = (y-ydelta)/sc + 17
+				this:SetPoint("TOPLEFT", Minimap, "TOPLEFT", MinimapPos.x , MinimapPos.y);
 			end
 		end)
 		CreateFrame( "GameTooltip", "MinimapTool", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
 		minimapButton:SetScript("OnEnter", function()
-			if isHost then
+			if vQueueDB.isHost then
 				MinimapTool:SetOwner( this, "ANCHOR_CURSOR" );
 				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. " player(s) in your wait list.", 1, 1, 1, 1)
 				MinimapTool:Show()
@@ -1550,20 +1619,30 @@ function vQueue_OnEvent(event)
 									end
 								end
 								leaderMessages[arg2] = strippedStr .. ":" .. kCat .. ":" .. tostring(GetTime())
-								
 								vQueue_addToGroup(kCat, strippedStr.. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
+								
+								if kCat == notifyForDungeon then
+									if (selectedRole == damageRole ) or (selectedRole == healerRole) or (selectedRole == tankRole) then
+										vQueueFrame.replyFrameTo:SetText(arg2)
+										vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. vQueueDB.class)
+										vQueueFrame.replyFrame:Show()
+										if not (vQueueDB.FrameShown or vQueueDB.inCombat) then 
+											vQueueFrame:Show() 
+											vQueueFrame.catList:Show()
+											vQueueFrame.hostlist:Show()
+											vQueueDB.FrameShown = true
+										end
+									end
+									DEFAULT_CHAT_FRAME:AddMessage("Someone is looking for " .. kCat)
+								end
 								refreshCatList(kCat)
 								break
 							end
 						end
 					end
-					--if not usedthis then 
-						--DEFAULT_CHAT_FRAME:AddMessage("Added: " .. puncString)
-						--table.insert(notCaught, tablelength(notCaught), puncString)
-					--end
 				end
 			end
-			if isHost then
+			if vQueueDB.isHost then
 			for kLfm, vLfm in pairs(getglobal("LFGARGS")) do
 				if Wholefind(puncString, vLfm) > 0 then
 					for kCat, kVal in pairs(getglobal("CATARGS")) do
@@ -1571,7 +1650,7 @@ function vQueue_OnEvent(event)
 							for groupindex = 1,MAX_PARTY_MEMBERS do
 								if UnitName("party" .. tostring(groupindex)) == arg2 then return end
 							end
-							if Wholefind(puncString, kkVal) > 0 and isHost and hostedCategory == kCat then
+							if Wholefind(puncString, kkVal) > 0 and vQueueDB.isHost and hostedCategory == kCat then
 								local exists = false
 								local playerRole = ""
 								for kHeal, vHeal in pairs(getglobal("ROLEARGS")["Healer"]) do
@@ -1687,7 +1766,7 @@ function vQueue_OnEvent(event)
 		end
 		if next(args) == nil then return end
 		-- Group request info from players
-		if args[1] == "vqrequest" and isHost then
+		if args[1] == "vqrequest" and vQueueDB.isHost then
 			for groupindex = 1,MAX_PARTY_MEMBERS do
 				if UnitName("party" .. tostring(groupindex)) == arg2 then return end
 			end
@@ -1709,6 +1788,9 @@ function vQueue_OnEvent(event)
 				end
 			end
 		end	
+	end
+	if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_REGEN_DISABLED" then
+		vQueueDB.inCombat = event == "PLAYER_REGEN_DISABLED"
 	end
 end
 
@@ -1765,7 +1847,7 @@ function vQueue_createCategories(textKey)
 				vQueueFrame.catListHighlight:SetParent(this)
 				vQueueFrame.catListHighlight:SetPoint("LEFT", this, "LEFT", -11, 0)
 				vQueueFrame.catListHighlight:Show()
-				isWaitListShown = false
+				vQueueDB.isWaitListShown = false
 				vQueueFrame.hostTitle:Hide()
 				vQueueFrame.hostTitleRole:Hide()
 				vQueueFrame.hostTitleClass:Hide()
@@ -1780,7 +1862,7 @@ function vQueue_createCategories(textKey)
 				vQueueFrame.hostTitleFindLevel:Show()
 				vQueueFrame.hostTitleFindSize:Show()
 				vQueueFrame.hostTitleFindRoles:Show()
-				if not isHost then realHostedCategory = args[1] end
+				if not vQueueDB.isHost then realHostedCategory = args[1] end
 				local args = {}
 				for k, v in pairs(categories) do
 					for i, item in v do
@@ -1808,7 +1890,7 @@ function vQueue_createCategories(textKey)
 				vQueueFrame.hostlistDps:Show()
 				vQueueFrame.hostlistTank:Show()
 				vQueueFrame.hostlistRoleText:Show()
-				if not isHost and not vQueueFrame.hostlistCreateButton:IsShown() then
+				if not vQueueDB.isHost and not vQueueFrame.hostlistCreateButton:IsShown() then
 					vQueueFrame.hostlistHostButton:Show()
 				else
 					vQueueFrame.hostlistHostButton:Hide()
@@ -1952,7 +2034,7 @@ function vQueue_addToWaitList(playerinfo)
 		if not vQueueFrame:IsShown() then minimapButton.notifyText:Show() end
 		groups["waitlist"][args[1]] = newWaitEntry
 	end
-	if selectedQuery == "waitlist" and isWaitListShown then 
+	if selectedQuery == "waitlist" and vQueueDB.isWaitListShown then 
 		groups["waitlist"][args[1]]:Show()
 		vQueue_UpdateHostScroll(scrollbar:GetValue())
 		scrollbar:SetMinMaxValues(1, tablelength(groups[selectedQuery])-10)
@@ -2232,7 +2314,7 @@ function vQueue_addToGroup(category, groupinfo)
 			end
 			if this:GetText() == "reply" then
 				vQueueFrame.replyFrameTo:SetText(name:GetText())
-				vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. tostring(UnitClass("player")))
+				vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. vQueueDB.class)
 				vQueueFrame.replyFrame:Show()
 			end
 		end)
@@ -2252,7 +2334,7 @@ function vQueue_addToGroup(category, groupinfo)
 		if args[5] == "Healer" then healer:Show() else healer:Hide() end
 		if args[6] == "Damage" then damage:Show() else damage:Hide() end
 	end
-	if category == selectedQuery and not isWaitListShown then 
+	if category == selectedQuery and not vQueueDB.isWaitListShown then 
 		groups[category][args[2]]:Show()
 		vQueue_UpdateHostScroll(scrollbar:GetValue())
 		scrollbar:SetMinMaxValues(1, tablelength(groups[selectedQuery])-10)
@@ -2328,7 +2410,7 @@ function vQueue_SlashCommandHandler( msg )
 		args = split(msg, "\%s")
 	end
 	if args[1] == "host" and args[2] ~= nil then
-		isHost = true
+		vQueueDB.isHost = true
 		DEFAULT_CHAT_FRAME:AddMessage("Now hosting for " .. hostedCategory)
 		idleMessage = 25
 	elseif args[1] == "lfg" and args[2] ~= nil then
@@ -2336,8 +2418,8 @@ function vQueue_SlashCommandHandler( msg )
 			addToSet(chatQueue, "lfg " .. args[2] .. "-CHANNEL-" .. tostring(GetChannelName(channelName)))
 		end
 	elseif args[1] == "request" and args[2] ~= nil then
-		if not setContains(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. UnitClass("player") .. " " .. selectedRole .. "-WHISPER-" .. args[2]) then
-			addToSet(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. UnitClass("player") .. " " .. selectedRole .. "-WHISPER-" .. args[2])
+		if not setContains(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. vQueueDB.class .. " " .. selectedRole .. "-WHISPER-" .. args[2]) then
+			addToSet(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. vQueueDB.class .. " " .. selectedRole .. "-WHISPER-" .. args[2])
 		end
 	elseif args[1] == "testgroups" then
 		for i=1, 100 do
@@ -2398,12 +2480,12 @@ function vQueue_OnUpdate()
 	idleMessage = idleMessage + arg1
 	if idleMessage > 30 and tablelength(chatQueue) == 0 then
 		idleMessage = 0
-		if (isFinding or isHost) and GetChannelName(channelName) < 1 then
+		if (isFinding or vQueueDB.isHost) and GetChannelName(channelName) < 1 then
 			JoinChannelByName(channelName)
-		elseif GetChannelName(channelName) > 0 and (isHost == false and isFinding == false) then
+		elseif GetChannelName(channelName) > 0 and (vQueueDB.isHost == false and isFinding == false) then
 			LeaveChannelByName(channelName)
 		end
-		if isHost then
+		if vQueueDB.isHost then
 			local groupSize = GetNumRaidMembers()
 			if groupSize == 0 then groupSize = GetNumPartyMembers() end
 			groupSize = groupSize + 1

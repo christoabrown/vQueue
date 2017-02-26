@@ -1,10 +1,10 @@
 ## Interface: 11200
-## Title: vQueue
+## Title: vQueue |cff7fff7f -Ace2-|r
 ## Author: Devlix
 ## Notes: Utility for group finding.
 ## SavedVariables: MinimapPos, vQueueOptions, notCaught
 ## SavedVariablesPerCharacter: selectedRole, isFinding
-## Version: 1.2.3
+## Version: 1.2.4
 
 Libs\AceLibrary\AceLibrary.lua
 Libs\AceOO-2.0\AceOO-2.0.lua

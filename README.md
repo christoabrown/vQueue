@@ -1,5 +1,10 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### V1.2.4
+
+- Added "Notify about group" function by SVEN
+- Added square minimap support
+
 ### V1.2.3
 
 - Fixed many errors
