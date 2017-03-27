@@ -223,7 +223,6 @@ CATARGS["zf"] = {
 	"farrak",
 	"zulfarak",
 	"mallet",
-	"zul farak",
 	"zulfarrak",
 	"zf"
 }

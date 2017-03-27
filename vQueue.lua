@@ -376,6 +376,17 @@ function vQueue_OnEvent(event)
 			vQueue_updateCatColors()
 		end)
 		
+		vQueueFrame.closeButtonX = CreateFrame("Button", "vQueueButton", vQueueFrame,"UIPanelCloseButton")
+		vQueueFrame.closeButtonX:SetPoint("TOPRIGHT", vQueueFrame, "TOPRIGHT", 2, 2)
+		--vQueueFrame.closeButtonX:SetText("X")
+		--vQueueFrame.closeButtonX:SetWidth(vQueueFrame.closeButtonX:GetTextWidth()+4)
+		vQueueFrame.closeButtonX:SetScript("OnClick", function()
+			vQueueFrame:Hide()
+			vQueueFrame.catList:Hide()
+			vQueueFrame.hostlist:Hide()
+			vQueueDB.FrameShown = false
+		end)
+		
 		vQueueFrame.closeButton = vQueue_newButton(vQueueFrame, 10)
 		vQueueFrame.closeButton:SetPoint("BOTTOMRIGHT", vQueueFrame, "BOTTOMRIGHT", -6, 3)
 		vQueueFrame.closeButton:SetText("Close")
@@ -1478,8 +1489,8 @@ function vQueue_OnEvent(event)
 					y= sin(angle)*ydelta
 					end
 				local sc= this:GetEffectiveScale()
-				MinimapPos.x = (xdelta-x)/sc - 17
-				MinimapPos.y = (y-ydelta)/sc + 17
+				MinimapPos.x = (xdelta-x)/sc - 24
+				MinimapPos.y = (y-ydelta)/sc + 24
 				this:SetPoint("TOPLEFT", Minimap, "TOPLEFT", MinimapPos.x , MinimapPos.y);
 			end
 		end)
@@ -2496,8 +2507,9 @@ function vQueue_OnUpdate()
 		for k, v in pairs(leaderMessages) do
 			if v ~= nil then
 				local leaderArgs = split(v, "\:")
-				local timeDiff = GetTime() - tonumber(leaderArgs[3])
+				local timeDiff
 				if leaderArgs[3] ~= nil and type(tonumber(leaderArgs[3])) == "number" then
+					timeDiff = GetTime() - tonumber(leaderArgs[3])
 					if timeDiff > (300) then -- delete chat entries after 5 minutes of no updates					
 						if groups[leaderArgs[2]][k] ~= nil then
 							groups[leaderArgs[2]][k]:Hide()
