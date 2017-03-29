@@ -1,11 +1,18 @@
 # vQueue - Group finder utility for Vanilla Wow
 
-### V1.2.4
+### v1.2.5
+
+- Added localization feature & ruRU locale by @Lichery, feel free to make other locales 
+- some small positional fixes
+- fix for #2
+- Updated libs
+
+### v1.2.4
 
 - Added "Notify about group" function by SVEN
 - Added square minimap support
 
-### V1.2.3
+### v1.2.3
 
 - Fixed many errors
 - Added Hazar's improvements
