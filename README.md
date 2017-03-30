@@ -1,5 +1,10 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.5a
+
+- minor ruRU locale fixes
+- fix for #6
+
 ### v1.2.5
 
 - Added localization feature & ruRU locale by @Lichery, feel free to make other locales 
