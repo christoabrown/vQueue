@@ -1,5 +1,8 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.6
+- Added multy dangeon notification, just add as more as you wish
+
 ### v1.2.5a
 
 - minor ruRU locale fixes

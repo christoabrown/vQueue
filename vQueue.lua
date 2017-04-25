@@ -713,10 +713,13 @@ function vQueue_OnEvent(event)
 		vQueueFrame.watchListButton:SetText(L["Notify about groups"])
 		vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+30)
 		vQueueFrame.watchListButton:SetScript("OnClick", function()
+			if not string.find(notifyForDungeon,selectedQuery) then
 			titleDung = selectedQuery
-			notifyForDungeon = titleDung
+				notifyForDungeon = notifyForDungeon == "" and titleDung or notifyForDungeon .. "/" .. titleDung
 			vQueueFrame.watchListButton:SetText(L["Notified for "] .. notifyForDungeon)
+				vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+30)
 			vQueueFrame.clearNotifyButton:Show()
+			end
 		end)
 
 		vQueueFrame.clearNotifyButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
@@ -726,6 +729,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.clearNotifyButton:SetScript("OnClick", function()
 			notifyForDungeon = ""
 			vQueueFrame.watchListButton:SetText(L["Notify about groups"])
+			vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+30)
 			vQueueFrame.clearNotifyButton:Hide()
 		end)
 		vQueueFrame.clearNotifyButton:Hide()
@@ -1632,7 +1636,8 @@ function vQueue_OnEvent(event)
 								leaderMessages[arg2] = strippedStr .. ":" .. kCat .. ":" .. tostring(GetTime())
 								vQueue_addToGroup(kCat, strippedStr.. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
 								
-								if kCat == notifyForDungeon then
+								
+								if string.find(notifyForDungeon,kCat) then
 									if (selectedRole == damageRole ) or (selectedRole == healerRole) or (selectedRole == tankRole) then
 										vQueueFrame.replyFrameTo:SetText(arg2)
 										vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. vQueueDB.class)
