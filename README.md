@@ -1,5 +1,33 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.6
+- Added multy dangeon notification, just add as more as you wish
+
+### v1.2.5a
+
+- minor ruRU locale fixes
+- fix for #6
+
+### v1.2.5
+
+- Added localization feature & ruRU locale by @Lichery, feel free to make other locales 
+- some small positional fixes
+- fix for #2
+- Updated libs
+
+### v1.2.4
+
+- Added "Notify about group" function by SVEN
+- Added square minimap support
+
+### v1.2.3
+
+- Fixed many errors
+- Added Hazar's improvements
+- Improved Start New Group dialog
+- some minor improvements
+- fixed "LFM DEM"
+
 ### v1.2
  * rewrote frame creation for groups, categories, and the wait list should be lest wasteful and load quicker
  * vQueue will now only hide chat messages that are used (if the option selected)
