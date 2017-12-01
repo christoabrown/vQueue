@@ -108,6 +108,10 @@ function round(num)
     end
 end
 
+function trim(str)
+	return gsub(str, '^%s*(.-)%s*$', '%1')
+end
+
 function split(pString, pPattern)
    local Table = {}  -- NOTE: use {n = 0} in Lua-5.0
    local fpat = "(.-)" .. pPattern
@@ -349,9 +353,26 @@ function vQueue_OnEvent(event)
 			bottom = 1
 		  }
 		}
+		local s = {}
+		if GetLocale() == "deDE" then
+			s = { w = 644, h = 395,
+			      catList 			= { w = 168, h = 355},
+ 			      optionsFrame 		= { w = 300 , h = 130 },
+			      hostlistFindButton 	= { x = -115, y = 20},
+			      filterCheckOnlyFilter 	= { fs = 8 },
+  			    }
+		else
+			s = { w = 614, h = 395,
+			      catList 			= { w = 138, h = 355},
+			      optionsFrame 		= { w = 200 , h = 130 },
+			      hostlistFindButton 	= { x = -65, y = 20},
+			      filterCheckOnlyFilter 	= { fs = 10 },
+  			    }
+		end
+			
 		vQueueFrame = CreateFrame("Frame", UIParent)
-		vQueueFrame:SetWidth(594)
-		vQueueFrame:SetHeight(395)
+		vQueueFrame:SetWidth(s.w)
+		vQueueFrame:SetHeight(s.h)
 		vQueueFrame:ClearAllPoints()
 		vQueueFrame:SetPoint("CENTER", UIParent,"CENTER") 
 		vQueueFrame:SetMovable(true)
@@ -413,8 +434,8 @@ function vQueue_OnEvent(event)
 		vQueueFrame.catList = CreateFrame("ScrollFrame", vQueueFrame)
 		vQueueFrame.catList:ClearAllPoints()
 		vQueueFrame.catList:SetPoint("LEFT", vQueueFrame, "LEFT", 5, -5)
-		vQueueFrame.catList:SetWidth(118)
-		vQueueFrame.catList:SetHeight(355)
+		vQueueFrame.catList:SetWidth(s.catList.w)
+		vQueueFrame.catList:SetHeight(s.catList.h)
 		vQueueFrame.catList:EnableMouseWheel(true)
 		vQueueFrame.catList:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.catList:SetBackdropColor(20/255, 20/255, 20/255, 0.9)
@@ -867,7 +888,7 @@ function vQueue_OnEvent(event)
 				vQueueFrame.hostlistTopSectionBg:SetTexture(0, 0, 0, 0)
 			end
 			for k, v in pairs(catListButtons) do
-				if split(v:GetText(), "%(")[1] == realHostedCategory then
+				if trim(split(v:GetText(), "%[")[1]) == realHostedCategory then
 					vQueueFrame.catListHighlight:SetParent(v)
 					vQueueFrame.catListHighlight:SetPoint("LEFT", v, "LEFT", -11, 0)
 					vQueueFrame.catListHighlight:Show()
@@ -896,8 +917,8 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistWaitListButton:Hide()
 		
 		vQueueFrame.optionsFrame = CreateFrame("Frame", nil, vQueueFrame)
-		vQueueFrame.optionsFrame:SetWidth(200)
-		vQueueFrame.optionsFrame:SetHeight(130)
+		vQueueFrame.optionsFrame:SetWidth(s.optionsFrame.w)
+		vQueueFrame.optionsFrame:SetHeight(s.optionsFrame.h)
 		vQueueFrame.optionsFrame:SetPoint("BOTTOM", vQueueFrame, "TOP")
 		vQueueFrame.optionsFrame:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.optionsFrame:SetBackdropColor(10/255, 10/255, 10/255, 0.8)
@@ -914,7 +935,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.optionsFrame:Hide()
 		
 		vQueueFrame.hostlistFindButton = CreateFrame("CheckButton", "findButtonCheck", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
-		vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.optionsFrame, "BOTTOMRIGHT", -65, 20)
+		vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.optionsFrame, "BOTTOMRIGHT", s.hostlistFindButton.x, s.hostlistFindButton.y)
 		getglobal(vQueueFrame.hostlistFindButton:GetName() .."Text"):SetText(L["Find groups"])
 		vQueueFrame.hostlistFindButton:SetWidth(16)
 		vQueueFrame.hostlistFindButton:SetHeight(16)
@@ -1145,6 +1166,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.filterCheckOnlyFilter:SetWidth(16)
 		vQueueFrame.filterCheckOnlyFilter:SetHeight(16)
 		getglobal(vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"):SetText(L["Only hide LFG/LFM messages"])
+		getglobal(vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", s.filterCheckOnlyFilter.fs)
 		vQueueFrame.filterCheckOnlyFilter:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -80)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckOnlyFilter:Disable() end
 		vQueueFrame.filterCheckOnlyFilter:SetChecked(vQueueOptions["onlylfg"])
@@ -1479,7 +1501,7 @@ function vQueue_OnEvent(event)
 				local xpos,ypos = GetCursorPosition();
 				local xmin,ymin,xm,ym = Minimap:GetLeft(), Minimap:GetBottom(), Minimap:GetRight(), Minimap:GetTop();
 				local scale = Minimap:GetEffectiveScale();
-				local xdelta, ydelta = (xm - xmin)/2*scale, (ym - ymin) /2 * scale;
+				local xdelta, ydelta = (xm - xmin + 5)/2*scale, (ym - ymin + 5) /2 * scale;
 				xpos = xmin*scale-xpos+xdelta;
 				ypos = ypos-ymin*scale-ydelta;
 				local angle = math.deg(math.atan2(ypos,xpos));
@@ -1493,8 +1515,8 @@ function vQueue_OnEvent(event)
 					y= sin(angle)*ydelta
 				end
 				local sc= this:GetEffectiveScale()
-				MinimapPos.x = (xdelta-x)/sc - 24
-				MinimapPos.y = (y-ydelta)/sc + 24
+				MinimapPos.x = (xdelta-x)/sc - 17
+				MinimapPos.y = (y-ydelta)/sc + 17
 				this:SetPoint("TOPLEFT", Minimap, "TOPLEFT", MinimapPos.x , MinimapPos.y);
 			end
 		end)
@@ -1820,7 +1842,7 @@ function vQueue_updateCatColors()
 				for i, item in v do
 					if type(item) == "string" then
 						local tArgs = split(item, "\:")
-						if tArgs[1] == split(vv:GetText(), "%(")[1] then 
+						if tArgs[1] == trim(split(vv:GetText(), "%[")[1]) then 
 							args = tArgs
 							break
 						end
@@ -1852,7 +1874,7 @@ function vQueue_createCategories(textKey)
 		if type(args[1]) == "string" then
 			local dropedItemFrame = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
 			dropedItemFrame:SetFont("Fonts\\FRIZQT__.TTF", 8)
-			dropedItemFrame:SetText(args[1] .. "(" .. tostring(tablelength(groups[args[2]])) .. ")")
+			dropedItemFrame:SetText(args[1] .. ( tablelength(groups[args[2]]) > 0 and " [" ..  tostring(tablelength(groups[args[2]])) .. "]" or ""))
 			dropedItemFrame:SetHighlightTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 			dropedItemFrame:SetWidth(dropedItemFrame:GetTextWidth())
 			dropedItemFrame:SetHeight(8)
@@ -1884,7 +1906,7 @@ function vQueue_createCategories(textKey)
 					for i, item in v do
 						if type(item) == "string" then
 							local tArgs = split(item, "\:")
-							if tArgs[1] == split(this:GetText(), "%(")[1] then 
+							if tArgs[1] == trim(split(this:GetText(), "%[")[1]) then 
 								args = tArgs
 								break
 							end
@@ -1915,7 +1937,7 @@ function vQueue_createCategories(textKey)
 				scrollbar:SetMinMaxValues(1, tablelength(groups[selectedQuery])-10)
 			end)
 			dropedItemFrame:SetScript("OnShow", function()
-				if vQueueFrame.catListHighlight:GetParent() and split(vQueueFrame.catListHighlight:GetParent():GetText(), "%(")[1] == split(this:GetText(), "%(")[1] then
+				if vQueueFrame.catListHighlight:GetParent() and trim(split(vQueueFrame.catListHighlight:GetParent():GetText(), "%[")[1]) == trim(split(this:GetText(), "%[")[1]) then
 					vQueueFrame.catListHighlight:SetParent(this)
 					vQueueFrame.catListHighlight:SetPoint("LEFT", this, "LEFT", -11, 0)
 					vQueueFrame.catListHighlight:Show()
@@ -2374,12 +2396,13 @@ end
 function refreshCatList(cat)
 	for kChild, child in ipairs(catListButtons) do
 		local args = {}
-		local realText = split(child:GetText(), "%(")
+		local realText = split(child:GetText(), "%[")
+		realText = trim (realText[1])
 		for k, v in pairs(categories) do
 			for i, item in v do
 				if type(item) == "string" then
 					local tArgs = split(item, "\:")
-					if tArgs[1] == realText[1] and tArgs[2] == cat then 
+					if tArgs[1] == realText and tArgs[2] == cat then 
 						args = tArgs
 						break
 					end
@@ -2387,7 +2410,7 @@ function refreshCatList(cat)
 			end
 		end
 		if args[2] ~= nil and type(args[2]) == "string" then
-			child:SetText(realText[1] .. "(" .. tablelength(groups[args[2]]) .. ")")
+			child:SetText(realText .. ( tablelength(groups[args[2]]) > 0 and " [" ..  tostring(tablelength(groups[args[2]])) .. "]" or ""))
 			child:SetWidth(child:GetTextWidth())
 			break
 		end

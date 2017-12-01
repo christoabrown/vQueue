@@ -1,5 +1,11 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.7
+
+- Added deDE locale by @Hengstenberg
+- some small positional fixes
+- reworked categories list
+
 ### v1.2.6
 - Added multy dangeon notification, just add as more as you wish
 
