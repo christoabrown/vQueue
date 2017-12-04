@@ -1,5 +1,10 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.7a
+
+- Fixed some spellings by @Hengstenberg
+- added some words for dangeon matching on deDE thx @Hengstenberg
+
 ### v1.2.7
 
 - Added deDE locale by @Hengstenberg

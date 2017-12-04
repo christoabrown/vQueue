@@ -3,7 +3,7 @@
 ## Notes: Utility for group finding.
 ## Notes-ruRU: Аддон для поиска группы.
 ## Author: Devlix
-## Version: 1.2.7
+## Version: 1.2.7a
 ## SavedVariables: MinimapPos, vQueueOptions, notCaught
 ## SavedVariablesPerCharacter: selectedRole, isFinding
 
