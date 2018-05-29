@@ -1,5 +1,9 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.7b
+
+- Fixed some reports: #15, #16, #17 
+
 ### v1.2.7a
 
 - Fixed some spellings by @Hengstenberg
