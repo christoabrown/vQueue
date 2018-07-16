@@ -175,7 +175,7 @@ CATARGS["graveyard"] = {
 }
 CATARGS["library"] = {
 	"library",
-	"sm",
+--	"sm",
 	"lib",
 	"sm all",
 	"sm any",

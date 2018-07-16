@@ -1,5 +1,10 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.8
+
+- Added delete button to list of hosted groups
+
+
 ### v1.2.7b
 
 - Fixed some reports: #15, #16, #17 

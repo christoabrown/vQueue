@@ -2302,28 +2302,41 @@ function vQueue_addToGroup(category, groupinfo)
 		newHostEntrySize:SetHeight(10)
 		
 		newHostEntryTank = newHostEntry:CreateTexture(nil, "ARTWORK")
-		newHostEntryTank:SetPoint("LEFT", newHostEntry, "LEFT", 360, 0)
+		newHostEntryTank:SetPoint("LEFT", newHostEntry, "LEFT", 350, 0)
 		newHostEntryTank:SetTexture("Interface\\AddOns\\vQueue\\media\\Tank")
 		newHostEntryTank:SetWidth(16)
 		newHostEntryTank:SetHeight(16)
 		if args[7] == "Tank" then newHostEntryTank:Show() else newHostEntryTank:Hide() end
 		
 		newHostEntryHealer = newHostEntry:CreateTexture(nil, "ARTWORK")
-		newHostEntryHealer:SetPoint("LEFT", newHostEntry, "LEFT", 376, 0)
+		newHostEntryHealer:SetPoint("LEFT", newHostEntry, "LEFT", 366, 0)
 		newHostEntryHealer:SetTexture("Interface\\AddOns\\vQueue\\media\\Healer")
 		newHostEntryHealer:SetWidth(16)
 		newHostEntryHealer:SetHeight(16)
 		if args[5] == "Healer" then newHostEntryHealer:Show() else newHostEntryHealer:Hide() end
 		
 		newHostEntryDamage = newHostEntry:CreateTexture(nil, "ARTWORK")
-		newHostEntryDamage:SetPoint("LEFT", newHostEntry, "LEFT", 392, 0)
+		newHostEntryDamage:SetPoint("LEFT", newHostEntry, "LEFT", 382, 0)
 		newHostEntryDamage:SetTexture("Interface\\AddOns\\vQueue\\media\\Damage")
 		newHostEntryDamage:SetWidth(16)
 		newHostEntryDamage:SetHeight(16)
 		if args[6] == "Damage" then newHostEntryDamage:Show() else newHostEntryDamage:Hide() end
 		
+		deleteFromListButton = vQueue_newButton(newHostEntry, 9)   -- LaYt
+		deleteFromListButton:SetPoint("RIGHT", newHostEntryBg, "RIGHT", -3, 0)
+		deleteFromListButton:SetText("X")
+		deleteFromListButton:SetTextColor(255,0,0)
+		deleteFromListButton:SetWidth(deleteFromListButton:GetTextWidth()+5)
+
+		deleteFromListButton:SetScript("OnClick", function() 
+			local thisframe, bg, name, level, size, tank, healer, damage = this:GetParent():GetRegions()
+			local leaderArgs = split(leaderMessages[name:GetText()], "\:")
+			leaderMessages[name:GetText()] = leaderArgs[1]..":"..leaderArgs[2]..":"..tostring(GetTime()-310)
+			idleMessage = 31
+		end)
+		
 		waitListButton = vQueue_newButton(newHostEntry, 9)
-		waitListButton:SetPoint("RIGHT", newHostEntryBg, "RIGHT", -3, 0)
+		waitListButton:SetPoint("RIGHT", newHostEntryBg, "RIGHT", 0-waitListButton:GetTextWidth()-15, 0)
 		if setContains(waitingList, args[2]) then
 			waitListButton:SetText(L["waiting"])
 		else
