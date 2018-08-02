@@ -44,6 +44,7 @@ do
 	vQueueDB.isWaitListShown = false
 	vQueueDB.FrameShown = false
 	vQueueDB.filterEnabled = true -- chat filter
+	vQueueDB.bannedLeaders = {}
 end
 
 
@@ -129,6 +130,17 @@ function split(pString, pPattern)
       table.insert(Table, cap)
    end
    return Table
+end
+
+function vQ_IsInArray(array, needle)
+	if(type(array) == "table") then
+		for i, element in pairs(array) do
+			if(i == needle or(type(element) ==  type(needle) and element == needle)) then
+				return i;
+			end
+		end
+	end
+	return nil;
 end
 
 function vQueue:OnInitialize()
@@ -959,7 +971,7 @@ function vQueue_OnEvent(event)
 			end
 		end)
 		
-		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist )
+		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist)
 		vQueueFrame.hostlistNameField:SetPoint("CENTER", vQueueFrame.hostlist, "CENTER", 0, 20)
 		vQueueFrame.hostlistNameField:SetAutoFocus(false)
 		vQueueFrame.hostlistNameField:SetFont("Fonts\\FRIZQT__.TTF", 10)
@@ -1618,6 +1630,9 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHostButton:Hide()
 	end
 	if event == "CHAT_MSG_CHANNEL" then
+		if vQ_IsInArray(vQueueDB.bannedLeaders,arg2) then
+			return
+		end
 		if string.lower(arg9) ~= string.lower(channelName) then
 			local puncString = filterPunctuation(arg1)
 			for kLfm, vLfm in pairs(getglobal("LFMARGS")) do
@@ -2229,7 +2244,8 @@ function vQueue_addToGroup(category, groupinfo)
 	end
 	if groups[category][args[2]] == nil then
 		newHostEntry = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
-		newHostEntry:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntry:SetFont("Interface\\AddOns\\vQueue\\media\\archangelsk.TTF", 10)
+--		newHostEntry:SetFont("Fonts\\FRIZQT__.TTF", 10)
 		newHostEntry:SetText(args[1])
 		newHostEntry:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		newHostEntry:SetHighlightTextColor(1, 1, 0)
@@ -2262,7 +2278,7 @@ function vQueue_addToGroup(category, groupinfo)
 						if seconds < 10 then
 							seconds = "0" .. tostring(seconds)
 						end
-						local msg = string.len(timeSplit[1])>29 and (string.sub(timeSplit[1],1,27).."...") or timeSplit[1]
+						local msg = string.len(timeSplit[1])>31 and (string.sub(timeSplit[1],1,30).."...") or timeSplit[1]
 						this:SetText(msg.." " .. tostring(minute) .. ":" .. tostring(seconds) )
 						this:SetWidth(this:GetTextWidth())
 					end
@@ -2283,7 +2299,7 @@ function vQueue_addToGroup(category, groupinfo)
 		end
 		
 		newHostEntryName = newHostEntry:CreateFontString(nil, "ARTWORK")
-		newHostEntryName:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntryName:SetFont("Interface\\AddOns\\vQueue\\media\\archangelsk.TTF", 10)
 		newHostEntryName:SetText(args[2])
 		newHostEntryName:SetPoint("LEFT", newHostEntry, "LEFT", 211, 0)
 		newHostEntryName:SetWidth(newHostEntryName:GetStringWidth())
@@ -2292,7 +2308,7 @@ function vQueue_addToGroup(category, groupinfo)
 		
 		local diffColor = getDifficultyColor(tonumber(args[3]), UnitLevel("player"))
 		newHostEntryLevel = newHostEntry:CreateFontString(nil, "ARTWORK")
-		newHostEntryLevel:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntryLevel:SetFont("Interface\\AddOns\\vQueue\\media\\archangelsk.TTF", 10)
 		newHostEntryLevel:SetText(args[3])
 		newHostEntryLevel:SetPoint("LEFT", newHostEntry, "LEFT", 287, 0)
 		newHostEntryLevel:SetWidth(newHostEntryLevel:GetStringWidth())
@@ -2300,7 +2316,7 @@ function vQueue_addToGroup(category, groupinfo)
 		newHostEntryLevel:SetHeight(10)
 		
 		newHostEntrySize = newHostEntry:CreateFontString(nil, "ARTWORK")
-		newHostEntrySize:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntrySize:SetFont("Interface\\AddOns\\vQueue\\media\\archangelsk.TTF", 10)
 		newHostEntrySize:SetText(args[4])
 		newHostEntrySize:SetPoint("LEFT", newHostEntry, "LEFT", 325, 0)
 		newHostEntrySize:SetWidth(newHostEntrySize:GetStringWidth())
@@ -2338,6 +2354,8 @@ function vQueue_addToGroup(category, groupinfo)
 			local thisframe, bg, name, level, size, tank, healer, damage = this:GetParent():GetRegions()
 			local leaderArgs = split(leaderMessages[name:GetText()], "\:")
 			leaderMessages[name:GetText()] = leaderArgs[1]..":"..leaderArgs[2]..":"..tostring(GetTime()-310)
+			vQueueDB.bannedLeaders[name:GetText()] = GetTime()
+			DEFAULT_CHAT_FRAME:AddMessage("vQueue: LFM from "..name:GetText().." is now ignored for 5 min.")
 			idleMessage = 31
 		end)
 		
@@ -2548,6 +2566,14 @@ function vQueue_OnUpdate()
 			if groupSize == 0 then groupSize = GetNumPartyMembers() end
 			groupSize = groupSize + 1
 			addToSet(chatQueue, "vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. groupSize .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " " .. tostring(2) .. " :" .. tostring(hostOptions[0]) .. "-CHANNEL-" .. tostring(GetChannelName(channelName)))
+		end
+		-- Remove baned Leaders
+		
+		for k,v in pairs(vQueueDB.bannedLeaders) do
+			if GetTime() - v > 300 then
+				vQueueDB.bannedLeaders[k] = nil
+			end
+		
 		end
 		
 		-- Removes entries after 5 minutes of no updates
