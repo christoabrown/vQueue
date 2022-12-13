@@ -65,6 +65,7 @@ L:RegisterTranslations("enUS", function() return {
 	["vQueue: So you need join channels manually or in macro: 1 channel per macro"] = true,
 	["vQueue: (/join lookingforgroup) (/join world) - PS: dont use caps"] = true,
 	["vQueue: after it reopen vQueue"] = true,
+	["Apply"] = true,
 } end)
 
 L:RegisterTranslations("ruRU", function() return {
@@ -133,6 +134,7 @@ L:RegisterTranslations("ruRU", function() return {
 	["vQueue: So you need join channels manually or in macro: 1 channel per macro"] = "vQueue: Поэтому вам нужно войти на каналы вручную или с помощью макроса: 1 канал на макрос",
 	["vQueue: (/join lookingforgroup) (/join world) - PS: dont use caps"] = "vQueue: (/join lookingforgroup) (/join world) - PS: не использовать Сaps",
 	["vQueue: after it reopen vQueue"] = "vQueue: после этого снова откройте vQueue",
+	["Apply"] = "Применить",
 } end)
 
 L:RegisterTranslations("deDE", function() return {
@@ -201,4 +203,5 @@ L:RegisterTranslations("deDE", function() return {
 	["vQueue: So you need join channels manually or in macro: 1 channel per macro"] = "vQueue: Du musst dann Kanäle manuell hinzufügen oder im Makro: 1 Kanal pro Makro",
 	["vQueue: (/join lookingforgroup) (/join world) - PS: dont use caps"] = "vQueue: (/join lookingforgroup) (/join world) - Verwende keine GROSSBUCHSTABEN",
 	["vQueue: after it reopen vQueue"] = "vQueue: Öffne danach vQueue erneut",
+	["Apply"] = "Gelten",
 } end)

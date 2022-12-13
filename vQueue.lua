@@ -265,6 +265,9 @@ function vQueue_OnEvent(event)
 		if vQueueOptions["onlylfg"] == nil then
 			vQueueOptions["onlylfg"] = true
 		end
+		if vQueueOptions.frameScale == nil then
+			vQueueOptions.frameScale = 1
+		end
 		if selectedRole ==  nil then selectedRole = "" end
 		if isFinding == nil then isFinding = true end
 		if notCaught == nil then notCaught = {} end
@@ -369,15 +372,15 @@ function vQueue_OnEvent(event)
 		if GetLocale() == "deDE" then
 			s = { w = 644, h = 395,
 			      catList 			= { w = 168, h = 355},
- 			      optionsFrame 		= { w = 300 , h = 130 },
-			      hostlistFindButton 	= { x = -115, y = 20},
+ 			      optionsFrame 		= { w = 300 , h = 150 },
+			      hostlistFindButton 	= { x = -115, y = 40},
 			      filterCheckOnlyFilter 	= { fs = 8 },
   			    }
 		else
 			s = { w = 614, h = 395,
 			      catList 			= { w = 138, h = 355},
-			      optionsFrame 		= { w = 200 , h = 130 },
-			      hostlistFindButton 	= { x = -65, y = 20},
+			      optionsFrame 		= { w = 200 , h = 150 },
+			      hostlistFindButton 	= { x = -65, y = 40},
 			      filterCheckOnlyFilter 	= { fs = 10 },
   			    }
 		end
@@ -1220,6 +1223,31 @@ function vQueue_OnEvent(event)
 			end
 		end)
 		
+		vQueueFrame.frameScale = CreateFrame("Slider", "optionsFrameScale", vQueueFrame.optionsFrame, "OptionsSliderTemplate");
+		vQueueFrame.frameScale:SetWidth(120)
+		vQueueFrame.frameScale:SetHeight(16)
+		vQueueFrame.frameScale:SetPoint("TOPLEFT", vQueueFrame.optionsFrameFix, "BOTTOMLEFT", 0, -7)
+		vQueueFrame.frameScale:SetMinMaxValues(0.1,3.0)
+		vQueueFrame.frameScale:SetValue(vQueueOptions.frameScale)
+		vQueueFrame.frameScale:SetValueStep(0.1)
+		getglobal("optionsFrameScaleText"):SetText(vQueueOptions.frameScale)
+		getglobal("optionsFrameScaleLow"):SetText("0.1")
+		getglobal("optionsFrameScaleHigh"):SetText("3.0")
+		vQueueFrame.frameScale:SetScript("OnValueChanged", function()
+			vQueueOptions.frameScale =tonumber(string.format("%.2f", this:GetValue())) 
+			getglobal(this:GetName().."Text"):SetText(vQueueOptions.frameScale)
+
+			
+		end)
+		
+		vQueueFrame.applyframeScale = vQueue_newButton(vQueueFrame.optionsFrame, 10)
+		vQueueFrame.applyframeScale:SetPoint("LEFT", vQueueFrame.frameScale, "RIGHT", 5, 0)
+		vQueueFrame.applyframeScale:SetText(L["Apply"])
+		vQueueFrame.applyframeScale:SetWidth(vQueueFrame.applyframeScale:GetTextWidth()+15)
+		vQueueFrame.applyframeScale:SetScript("OnClick", function()
+			vQueueFrame:SetScale(vQueueOptions.frameScale)
+		end)
+		
 		--Role Icons for group creation
 		vQueueFrame.hostlistHostHealer = CreateFrame("Button", "vQueueInfoButton", vQueueFrame.hostlistNameField)
 		vQueueFrame.hostlistHostHealer:SetWidth(32)
@@ -1617,6 +1645,7 @@ function vQueue_OnEvent(event)
 		vQueue_createCategories(L["Miscellaneous"])
 
 		vQueueminimapButton:Show()
+		vQueueFrame:SetScale(vQueueOptions.frameScale)
 		vQueueFrame:Hide()
 		vQueueFrame.catList:Hide()
 		vQueueFrame.hostlist:Hide()
@@ -2245,7 +2274,6 @@ function vQueue_addToGroup(category, groupinfo)
 	if groups[category][args[2]] == nil then
 		newHostEntry = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		newHostEntry:SetFont("Interface\\AddOns\\vQueue\\media\\archangelsk.TTF", 10)
---		newHostEntry:SetFont("Fonts\\FRIZQT__.TTF", 10)
 		newHostEntry:SetText(args[1])
 		newHostEntry:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		newHostEntry:SetHighlightTextColor(1, 1, 0)
@@ -2259,7 +2287,10 @@ function vQueue_addToGroup(category, groupinfo)
 			if leaderMessages[name:GetText()] ~= nil then
 				local leaderargs = split(leaderMessages[name:GetText()], "\:")
 				groupToolTip:SetOwner( this, "ANCHOR_CURSOR" );
-				groupToolTip:AddLine(leaderargs[1], 1, 1, 1, 1)
+				groupToolTip:AddLine("Leader: " .. name:GetText(), 1, 1, 1, 1)
+				groupToolTip:AddLine("Need Level: " .. level:GetText(), 1, 1, 1, 1)
+				groupToolTip:AddLine("Message: ", 1, 1, 1, 1)
+				groupToolTip:AddLine(leaderargs[1], vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3], 1)
 				groupToolTip:Show()
 			end
 		end)
@@ -2278,7 +2309,7 @@ function vQueue_addToGroup(category, groupinfo)
 						if seconds < 10 then
 							seconds = "0" .. tostring(seconds)
 						end
-						local msg = string.len(timeSplit[1])>31 and (string.sub(timeSplit[1],1,30).."...") or timeSplit[1]
+						local msg = string.len(timeSplit[1])>29 and (string.sub(timeSplit[1],1,28).."...") or timeSplit[1]
 						this:SetText(msg.." " .. tostring(minute) .. ":" .. tostring(seconds) )
 						this:SetWidth(this:GetTextWidth())
 					end

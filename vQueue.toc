@@ -2,8 +2,8 @@
 ## Title: vQueue |cff7fff7f -Ace2-|r
 ## Notes: Utility for group finding.
 ## Notes-ruRU: Аддон для поиска группы.
-## Author: Devlix
-## Version: 1.2.8
+## Author: Devlix, laytya
+## Version: 1.2.10
 ## SavedVariables: MinimapPos, vQueueOptions, notCaught
 ## SavedVariablesPerCharacter: selectedRole, isFinding
 
