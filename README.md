@@ -1,5 +1,9 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.10
+
+- Added option to scale frame
+
 ### v1.2.9
 
 - Added close window by ESC
