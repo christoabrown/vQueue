@@ -112,7 +112,8 @@ ROLEARGS["Damage"] = {
 }
 ROLEARGS["Tank"] = {
 	"tank",
-	"坦克,坦",
+	"坦克",
+	"坦",
 	"T",
 	"prot",
 	"protection",
@@ -123,7 +124,7 @@ ROLEARGS["Tank"] = {
 }
 
 CATARGS = {
-	
+
 }
 
 CATARGS["rfc"] = {
@@ -301,18 +302,30 @@ CATARGS["lbrs"] = {
 	"lower blackrock",
 	"lbrs"
 }
-CATARGS["dem"] = {
-	"dm",
-	"dire maul",
-	"完美厄运",
-	"厄运",
-	"diremaul",
-	"dmw",
-	"dmn",
+CATARGS["deme"] = {
+    "dm",
+	"dire maul east",
+	"厄运东",
+	"diremaul east",
 	"dme",
-	"dm:w",
+	"dm:e"
+}
+CATARGS["demw"] = {
+	"dmw",
+	"dire maul west",
+	"厄运西",
+	"diremaul west",
+	"dmw",
+	"dm:w"
+}
+CATARGS["demn"] = {
+	"dmt",
+	"dire maul north",
+	"厄运北",
+	"完美厄运",
+	"diremaul north",
+	"dmn",
 	"dm:n",
-	"dm:e",
 	"tribute",
 	"trib"
 }
@@ -397,7 +410,7 @@ CATARGS["av"] = {
 
 local function MergeTables(a, b)
 	if type(a) == 'table' and type(b) == 'table' then
-			table.foreach(b, function(k,v) 
+			table.foreach(b, function(k,v)
 				for	kk,vv in a do
 				 if v == vv then return; end
 				end
@@ -409,17 +422,17 @@ end
 
 if GetLocale() == "deDE" then
 	MergeTables(LFMARGS,{
-		"tank für",   
-		"heiler für",   
-		"heal für",   
-		"3dds für",   
-		"3dd für",   
-		"2dds für",   
-		"2dd für",   
-		"1dd für",   
-		"dds für",   
-		"dd für",   
-		"nur noch",   
+		"tank für",
+		"heiler für",
+		"heal für",
+		"3dds für",
+		"3dd für",
+		"2dds für",
+		"2dd für",
+		"1dd für",
+		"dds für",
+		"dd für",
+		"nur noch",
 	})
 	table.insert(ROLEARGS["Healer"], "heiler")
 	table.insert(CATARGS["rfc"], "rf")
@@ -432,27 +445,27 @@ if GetLocale() == "deDE" then
 	table.insert(CATARGS["graveyard"],"friedhof")
 	table.insert(CATARGS["graveyard"],"fh")
 	MergeTables(CATARGS["library"],{
-		"bibi",  
-		"biblio", 
+		"bibi",
+		"biblio",
 		"bib",
 		"bibliothek"
 	})
 	MergeTables(CATARGS["armory"],{
-		"wk",   
-		"waka",   
-		"waffenkammer"   
+		"wk",
+		"waka",
+		"waffenkammer"
 	})
 	MergeTables(CATARGS["cathedral"],{
-		"kath",   
-		"kathe",   
-		"kathedrale"   
+		"kath",
+		"kathe",
+		"kathedrale"
 	})
 	table.insert(CATARGS["rfd"],"hügel")
 	table.insert(CATARGS["st"], "tempel")
 end
 
 MINLVLS = {
-	
+
 }
 
 MINLVLS["quest110"] = 1
@@ -500,5 +513,8 @@ MINLVLS["st"] = 50
 MINLVLS["brd"] = 52
 MINLVLS["lbrs"] = 55
 MINLVLS["dem"] = 56
+MINLVLS["deme"] = 56
+MINLVLS["demw"] = 56
+MINLVLS["demn"] = 56
 MINLVLS["strat"] = 58
 MINLVLS["scholo"] = 58
