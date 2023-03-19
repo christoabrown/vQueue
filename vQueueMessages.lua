@@ -136,7 +136,6 @@ CATARGS["rfc"] = {
 }
 CATARGS["dead"] = {
 	"deadmines",
-	"dsadgsdggtwetsa",
 	"死矿",
 	"死亡矿井",
 	"deadmine",
