@@ -36,6 +36,9 @@ ROLEARGS = {
 }
 ROLEARGS["Healer"] = {
 	"heals",
+	"治疗",
+	"奶",
+	"奶妈",
 	"healss",
 	"heal",
 	"healer",
@@ -61,6 +64,9 @@ ROLEARGS["Healer"] = {
 }
 ROLEARGS["Damage"] = {
 	"dps",
+	"近战",
+	"远程",
+	"法师",
 	"damage",
 	"deeps",
 	"hunter",
@@ -106,6 +112,8 @@ ROLEARGS["Damage"] = {
 }
 ROLEARGS["Tank"] = {
 	"tank",
+	"坦克,坦",
+	"T",
 	"prot",
 	"protection",
 	"guardian",
@@ -120,11 +128,16 @@ CATARGS = {
 
 CATARGS["rfc"] = {
 	"ragefire chasm",
+	"怒焰裂谷",
+	"怒焰",
 	"ragefire",
 	"rfc"
 }
 CATARGS["dead"] = {
 	"deadmines",
+	"dsadgsdggtwetsa",
+	"死矿",
+	"死亡矿井",
 	"deadmine",
 	"vancleef",
 	"cleef",
@@ -132,17 +145,23 @@ CATARGS["dead"] = {
 }
 CATARGS["wc"] = {
 	"wailing caverns",
+	"哀嚎",
+	"哀嚎洞穴",
 	"wailing",
 	"caverns",
 	"wc"
 }
 CATARGS["sfk"] = {
 	"shadowfang keep",
+	"影牙",
+	"影牙城堡",
 	"shadowfang",
 	"sfk"
 }
 CATARGS["stock"] = {
 	"the stockade",
+	"暴风监狱",
+	"监狱",
 	"stockade",
 	"stockades",
 	"stock",
@@ -150,22 +169,30 @@ CATARGS["stock"] = {
 }
 CATARGS["bfd"] = {
 	"blackfathom deeps",
+	"黑暗深渊",
 	"blackfathom",
 	"bfd"
 }
 CATARGS["gnomer"] = {
 	"gnomeregan",
+	"矮子本",
+	"侏儒本",
+	"诺莫瑞根",
 	"gnomergan",
 	"gnome",
 	"gnomer"
 }
 CATARGS["rfk"] = {
 	"razorfen kraul",
+	"沼泽",
+	"剃刀沼泽",
 	"razerfen kraul",
 	"rfk"
 }
 CATARGS["graveyard"] = {
 	"graveyard",
+	"血色墓地",
+	"墓地",
 	"grave",
 	"yard",
 	"gy",
@@ -175,7 +202,8 @@ CATARGS["graveyard"] = {
 }
 CATARGS["library"] = {
 	"library",
---	"sm",
+	"图书馆",
+	"血色图书馆",
 	"lib",
 	"sm all",
 	"sm any",
@@ -186,6 +214,8 @@ CATARGS["library"] = {
 }
 CATARGS["armory"] = {
 	"armory",
+	"军械库 ",
+	"血色军械库",
 	"arm",
 	"arms",
 	"amory",
@@ -198,6 +228,8 @@ CATARGS["armory"] = {
 }
 CATARGS["cathedral"] = {
 	"cathedral",
+	"教堂",
+	"血色教堂",
 	"cath",
 	"smcath",
 	"smcathedral",
@@ -206,6 +238,8 @@ CATARGS["cathedral"] = {
 }
 CATARGS["rfd"] = {
 	"razorfen downs",
+	"高地",
+	"剃刀高地",
 	"razerfen downs",
 	"razorfen down",
 	"razerfen down",
@@ -214,12 +248,16 @@ CATARGS["rfd"] = {
 }
 CATARGS["ulda"] = {
 	"uldaman",
+	"奥达曼",
 	"ulda",
 	"uld",
 	"ulduman"
 }
 CATARGS["zf"] = {
 	"zul farak",
+	"祖尔",
+	"祖法",
+	"祖尔法拉克",
 	"farrak",
 	"zulfarak",
 	"mallet",
@@ -228,6 +266,10 @@ CATARGS["zf"] = {
 }
 CATARGS["mara"] = {
 	"mara",
+	"马拉",
+	"玛拉",
+	"马拉顿",
+	"玛拉顿",
 	"maraudon",
 	"marudon",
 	"maru"
@@ -235,11 +277,17 @@ CATARGS["mara"] = {
 CATARGS["st"] = {
 --	"st",  -- "Server Time" workaround... #16
 	"sunken",
+	"神庙",
 	"sunk",
 	"sunkentemple"
 }
 CATARGS["brd"] = {
 	"blackrock depths",
+	"MC门任务",
+	"黑石",
+	"黑石深渊",
+	"救元帅",
+	"救公主",
 	"blackrock dpths",
 	"brd",
 	"lava",
@@ -248,12 +296,16 @@ CATARGS["brd"] = {
 }
 CATARGS["lbrs"] = {
 	"lower brs",
+	"黑下",
+	"黑石塔下层",
 	"lower blackrock",
 	"lbrs"
 }
 CATARGS["dem"] = {
 	"dm",
 	"dire maul",
+	"完美厄运",
+	"厄运",
 	"diremaul",
 	"dmw",
 	"dmn",
@@ -266,16 +318,22 @@ CATARGS["dem"] = {
 }
 CATARGS["strat"] = {
 	"stratholme",
+	"stsm",
+	"斯坦索姆",
 	"strath",
 	"strat"
 }
 CATARGS["scholo"] = {
 	"scholomance",
+	"通灵",
+	"通灵学院",
 	"scholo",
 	"schol"
 }
 CATARGS["ubrs"] = {
 	"upper",
+	"黑上",
+	"黑石塔上层",
 	"ubrs"
 }
 CATARGS["ony"] = {
