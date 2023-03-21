@@ -1,5 +1,12 @@
 # vQueue - Group finder utility for Vanilla Wow
 
+### v1.2.11
+
+- added basic support for /china channel
+- added new fonts ARIALN.ttf
+- more about chinese fonts there https://docs.google.com/document/d/1Q8gPp54Zt-Bcco1wIntGjeei-WmajwRMFxLcNKj6wAM
+- original author https://github.com/christoabrown/vQueue
+
 ### v1.2.10
 
 - Added option to scale frame

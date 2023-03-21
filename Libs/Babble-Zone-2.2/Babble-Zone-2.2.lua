@@ -53,9 +53,9 @@ BabbleZone:RegisterTranslations("enUS", function()
 		["Deeprun Tram"] = true,
 		["Desolace"] = true,
 		["Dire Maul"] = true,
-		["Dire Maul (East)"] = true,
-		["Dire Maul (West)"] = true,
-		["Dire Maul (North)"] = true,
+		["Dire Maul East"] = true,
+		["Dire Maul West"] = true,
+		["Dire Maul North"] = true,
 		["Dun Morogh"] = true,
 		["Durotar"] = true,
 		["Duskwood"] = true,
@@ -128,7 +128,7 @@ BabbleZone:RegisterTranslations("enUS", function()
 		["Zul'Gurub"] = true,
 
 		-- Burning Crusade
-		
+
 		-- Subzones used for displaying instances.
 		["Plaguewood"] = true,
 		["Hellfire Citadel"] = true,
@@ -203,9 +203,9 @@ BabbleZone:RegisterTranslations("ruRU", function()
 		["Deeprun Tram"] = "Подземный поезд",
 		["Desolace"] = "Пустоши",
 		["Dire Maul"] = "Забытый Город",
-		["Dire Maul (East)"] = "Забытый город (Восток)",
-		["Dire Maul (West)"] = "Забытый город (Запад)",
-		["Dire Maul (North)"] = "Забытый город (Север)",
+		["Dire Maul East"] = "Забытый город Восток",
+		["Dire Maul West"] = "Забытый город Запад",
+		["Dire Maul North"] = "Забытый город Север",
 		["Dun Morogh"] = "Дун Морог",
 		["Durotar"] = "Дуротар",
 		["Duskwood"] = "Сумеречный лес",
@@ -278,7 +278,7 @@ BabbleZone:RegisterTranslations("ruRU", function()
 		["Zul'Gurub"] = "Зул'Гуруб",
 
 		-- Burning Crusade
-		
+
 		-- Subzones used for displaying instances.
 		["Plaguewood"] = "Проклятый лес",
 		["Hellfire Citadel"] = "Цитадель Адского Пламени",
@@ -354,9 +354,9 @@ BabbleZone:RegisterTranslations("deDE", function()
 		["Deeprun Tram"] = "Die Tiefenbahn",
 		["Desolace"] = "Desolace",
 		["Dire Maul"] = "D\195\188sterbruch",
-		["Dire Maul (North)"] = "D\195\188sterbruch (Nord)",
-		["Dire Maul (East)"] = "D\195\188sterbruch (Ost)",
-		["Dire Maul (West)"] = "D\195\188sterbruch (West)",
+		["Dire Maul North"] = "D\195\188sterbruch Nord",
+		["Dire Maul East"] = "D\195\188sterbruch Ost",
+		["Dire Maul West"] = "D\195\188sterbruch West",
 		["Dun Morogh"] = "Dun Morogh",
 		["Durotar"] = "Durotar",
 		["Duskwood"] = "D\195\164mmerwald",
@@ -427,7 +427,7 @@ BabbleZone:RegisterTranslations("deDE", function()
 		["Zul'Gurub"] = "Zul'Gurub",
 
 		-- Burning Crusade
-		
+
 		-- Subzones used for displaying instances.
 		["Plaguewood"] = "Seuchenwald",
 		["Hellfire Citadel"] = "H\195\182llenfeuerzitadelle",
@@ -502,9 +502,9 @@ BabbleZone:RegisterTranslations("frFR", function()
 		["Deeprun Tram"] = "Tram des profondeurs",
 		["Desolace"] = "D\195\169solace",
 		["Dire Maul"] = "Hache-tripes",
-		["Dire Maul (East)"] = "Hache-tripes (Est)",
-		["Dire Maul (West)"] = "Hache-tripes (Ouest)",
-		["Dire Maul (North)"] = "Hache-tripes (Nord)",
+		["Dire Maul East"] = "Hache-tripes Est",
+		["Dire Maul West"] = "Hache-tripes Ouest",
+		["Dire Maul North"] = "Hache-tripes Nord",
 		["Dun Morogh"] = "Dun Morogh",
 		["Durotar"] = "Durotar",
 		["Duskwood"] = "Bois de la P\195\169nombre (Duskwood)",
@@ -575,7 +575,7 @@ BabbleZone:RegisterTranslations("frFR", function()
 		["Zul'Gurub"] = "Zul'Gurub",
 
 		-- Burning Crusade
-		
+
 		-- Subzones used for displaying instances.
 		--["Plaguewood"] = true,
 		["Hellfire Citadel"] = "Citadelle des Flammes infernales",
@@ -650,9 +650,9 @@ BabbleZone:RegisterTranslations("zhCN", function()
 		["Deeprun Tram"] = "矿道地铁",
 		["Desolace"] = "凄凉之地",
 		["Dire Maul"] = "厄运之槌",
-		["Dire Maul (East)"] = "厄运之槌(东)",
-		["Dire Maul (West)"] = "厄运之槌(西)",
-		["Dire Maul (North)"] = "厄运之槌(北)",
+		["Dire Maul East"] = "厄运之槌(东)",
+		["Dire Maul West"] = "厄运之槌(西)",
+		["Dire Maul North"] = "厄运之槌(北)",
 		["Dun Morogh"] = "丹莫罗",
 		["Durotar"] = "杜隆塔尔",
 		["Duskwood"] = "暮色森林",
@@ -802,9 +802,9 @@ BabbleZone:RegisterTranslations("zhTW", function()
 		["Deeprun Tram"] = "礦道地鐵",
 		["Desolace"] = "淒涼之地",
 		["Dire Maul"] = "厄運之槌",
-		["Dire Maul (West)"] = "厄運之槌（西）",
-		["Dire Maul (North)"] = "厄運之槌（北）",
-		["Dire Maul (East)"] = "厄運之槌（東）",
+		["Dire Maul West"] = "厄運之槌（西）",
+		["Dire Maul North"] = "厄運之槌（北）",
+		["Dire Maul East"] = "厄運之槌（東）",
 		["Dun Morogh"] = "丹莫洛",
 		["Durotar"] = "杜洛塔",
 		["Duskwood"] = "暮色森林",
@@ -954,9 +954,9 @@ BabbleZone:RegisterTranslations("koKR", function()
 		["Deeprun Tram"] = "깊은굴 지하철",
 		["Desolace"] = "잊혀진 땅",
 		["Dire Maul"] = "혈투의 전장",
-		["Dire Maul (East)"] = "혈투의 전장 동부",
-		["Dire Maul (West)"] = "혈투의 전장 서부",
-		["Dire Maul (North)"] = "혈투의 전장 북부",
+		["Dire Maul East"] = "혈투의 전장 동부",
+		["Dire Maul West"] = "혈투의 전장 서부",
+		["Dire Maul North"] = "혈투의 전장 북부",
 		["Dun Morogh"] = "던 모로",
 		["Durotar"] = "듀로타",
 		["Duskwood"] = "그늘숲",
