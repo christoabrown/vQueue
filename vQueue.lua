@@ -238,6 +238,12 @@ local function vQueue_hostlistNameFieldUpdate()
 	end
 	vQueueFrame.hostlistNameField:SetText("LFM " .. string.upper(titleDung) .. " - " .. minLvl .. "+ "..needMates)
 end
+local function setTooltipFont(tooltip)
+	for i =1, 30 do
+		getglobal(tooltip:GetName().."TextRight"..i):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 12)
+		getglobal(tooltip:GetName().."TextLeft"..i):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 12)
+	end
+end
 
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
@@ -492,6 +498,8 @@ function vQueue_OnEvent(event)
 		end)
 		CreateFrame( "GameTooltip", "groupToolTip", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
 		CreateFrame( "GameTooltip", "playerQueueToolTip", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
+		setTooltipFont(groupToolTip)
+		setTooltipFont(playerQueueToolTip)
 		hostListFrame = vQueueFrame.hostlist
 
 		vQueueFrame.hostlistTopSection = CreateFrame("Frame", nil, vQueueFrame.hostlist)
