@@ -1,6 +1,11 @@
 LFMARGS = {
+	"run",
 	"lfm",
 	"need",
+	"last",
+	"ready",
+	"gtg",
+	"g2g",
 	"lf",
 	"spot",
 	"looking",
@@ -31,6 +36,9 @@ ROLEARGS = {
 }
 ROLEARGS["Healer"] = {
 	"heals",
+	"治疗",
+	"奶",
+	"奶妈",
 	"healss",
 	"heal",
 	"healer",
@@ -56,6 +64,9 @@ ROLEARGS["Healer"] = {
 }
 ROLEARGS["Damage"] = {
 	"dps",
+	"近战",
+	"远程",
+	"法师",
 	"damage",
 	"deeps",
 	"hunter",
@@ -101,6 +112,9 @@ ROLEARGS["Damage"] = {
 }
 ROLEARGS["Tank"] = {
 	"tank",
+	"坦克",
+	"坦",
+	"T",
 	"prot",
 	"protection",
 	"guardian",
@@ -110,66 +124,89 @@ ROLEARGS["Tank"] = {
 }
 
 CATARGS = {
-	
+
 }
 
 CATARGS["rfc"] = {
 	"ragefire chasm",
+	"怒焰裂谷",
+	"怒焰",
 	"ragefire",
 	"rfc"
 }
 CATARGS["dead"] = {
 	"deadmines",
+	"死矿",
+	"死亡矿井",
 	"deadmine",
-	"dm"
+	"vancleef",
+	"cleef",
+	"vc"
 }
 CATARGS["wc"] = {
 	"wailing caverns",
+	"哀嚎",
+	"哀嚎洞穴",
 	"wailing",
 	"caverns",
 	"wc"
 }
 CATARGS["sfk"] = {
 	"shadowfang keep",
+	"影牙",
+	"影牙城堡",
 	"shadowfang",
 	"sfk"
 }
 CATARGS["stock"] = {
 	"the stockade",
+	"暴风监狱",
+	"监狱",
 	"stockade",
+	"stockades",
 	"stock",
 	"stocks"
 }
 CATARGS["bfd"] = {
 	"blackfathom deeps",
+	"黑暗深渊",
 	"blackfathom",
 	"bfd"
 }
 CATARGS["gnomer"] = {
 	"gnomeregan",
+	"矮子本",
+	"侏儒本",
+	"诺莫瑞根",
 	"gnomergan",
-	"gnomer",
-	"gnome"
+	"gnome",
+	"gnomer"
 }
 CATARGS["rfk"] = {
 	"razorfen kraul",
+	"沼泽",
+	"剃刀沼泽",
 	"razerfen kraul",
 	"rfk"
 }
 CATARGS["graveyard"] = {
 	"graveyard",
+	"血色墓地",
+	"墓地",
 	"grave",
 	"yard",
 	"gy",
 	"smgy",
 	"smgraveyard",
-	"smgrave",
-	"sm all",
-	"sm any"
+	"smgrave"
 }
 CATARGS["library"] = {
 	"library",
+	"图书馆",
+	"血色图书馆",
 	"lib",
+	"sm all",
+	"sm any",
 	"libs",
 	"smlib",
 	"smlibrary",
@@ -177,6 +214,8 @@ CATARGS["library"] = {
 }
 CATARGS["armory"] = {
 	"armory",
+	"军械库 ",
+	"血色军械库",
 	"arm",
 	"arms",
 	"amory",
@@ -189,6 +228,8 @@ CATARGS["armory"] = {
 }
 CATARGS["cathedral"] = {
 	"cathedral",
+	"教堂",
+	"血色教堂",
 	"cath",
 	"smcath",
 	"smcathedral",
@@ -197,6 +238,8 @@ CATARGS["cathedral"] = {
 }
 CATARGS["rfd"] = {
 	"razorfen downs",
+	"高地",
+	"剃刀高地",
 	"razerfen downs",
 	"razorfen down",
 	"razerfen down",
@@ -205,59 +248,104 @@ CATARGS["rfd"] = {
 }
 CATARGS["ulda"] = {
 	"uldaman",
+	"奥达曼",
 	"ulda",
 	"uld",
 	"ulduman"
 }
 CATARGS["zf"] = {
-	"zul farrak",
-	"zulfarak",
 	"zul farak",
+	"祖尔",
+	"祖法",
+	"祖尔法拉克",
+	"farrak",
+	"zulfarak",
+	"mallet",
 	"zulfarrak",
 	"zf"
 }
 CATARGS["mara"] = {
+	"mara",
+	"马拉",
+	"玛拉",
+	"马拉顿",
+	"玛拉顿",
 	"maraudon",
 	"marudon",
-	"mara",
 	"maru"
 }
 CATARGS["st"] = {
+--	"st",  -- "Server Time" workaround... #16
 	"sunken",
+	"神庙",
 	"sunk",
-	"sunkentemple",
-	"st"
+	"sunkentemple"
 }
 CATARGS["brd"] = {
 	"blackrock depths",
+	"MC门任务",
+	"黑石",
+	"黑石深渊",
+	"救元帅",
+	"救公主",
 	"blackrock dpths",
 	"brd",
-	"lava run"
+	"lava",
+	"arena",
+	"jailbreak"
 }
 CATARGS["lbrs"] = {
 	"lower brs",
+	"黑下",
+	"黑石塔下层",
 	"lower blackrock",
 	"lbrs"
 }
-CATARGS["dm"] = {
-	"dire",
-	"maul",
-	"dm",
+CATARGS["deme"] = {
+    "dm",
+	"dire maul east",
+	"厄运东",
+	"diremaul east",
+	"dme",
+	"dm:e"
+}
+CATARGS["demw"] = {
+	"dmw",
+	"dire maul west",
+	"厄运西",
+	"diremaul west",
+	"dmw",
+	"dm:w"
+}
+CATARGS["demn"] = {
+	"dmt",
+	"dire maul north",
+	"厄运北",
+	"完美厄运",
+	"diremaul north",
+	"dmn",
+	"dm:n",
 	"tribute",
 	"trib"
 }
 CATARGS["strat"] = {
 	"stratholme",
+	"stsm",
+	"斯坦索姆",
 	"strath",
 	"strat"
 }
 CATARGS["scholo"] = {
 	"scholomance",
+	"通灵",
+	"通灵学院",
 	"scholo",
 	"schol"
 }
 CATARGS["ubrs"] = {
 	"upper",
+	"黑上",
+	"黑石塔上层",
 	"ubrs"
 }
 CATARGS["ony"] = {
@@ -267,8 +355,9 @@ CATARGS["ony"] = {
 }
 CATARGS["zg"] = {
 	"zg",
-	"zul\'g",
-	"gurub"
+	"zul gurub", -- #15
+	"gurub",
+	"hakkar"
 }
 CATARGS["mc"] = {
 	"molten",
@@ -318,8 +407,64 @@ CATARGS["av"] = {
 	"aterac"
 }
 
+local function MergeTables(a, b)
+	if type(a) == 'table' and type(b) == 'table' then
+			table.foreach(b, function(k,v)
+				for	kk,vv in a do
+				 if v == vv then return; end
+				end
+				table.insert(a,v)
+			end)
+	end
+    return a
+end
+
+if GetLocale() == "deDE" then
+	MergeTables(LFMARGS,{
+		"tank für",
+		"heiler für",
+		"heal für",
+		"3dds für",
+		"3dd für",
+		"2dds für",
+		"2dd für",
+		"1dd für",
+		"dds für",
+		"dd für",
+		"nur noch",
+	})
+	table.insert(ROLEARGS["Healer"], "heiler")
+	table.insert(CATARGS["rfc"], "rf")
+	table.insert(CATARGS["rfc"], "rfa")
+	table.insert(CATARGS["wc"],"hdw")
+	table.insert(CATARGS["sfk"],"bsf")
+	table.insert(CATARGS["bfd"],"bft")
+	table.insert(CATARGS["gnomer"],"gnom")
+	table.insert(CATARGS["rfk"],"kral")
+	table.insert(CATARGS["graveyard"],"friedhof")
+	table.insert(CATARGS["graveyard"],"fh")
+	MergeTables(CATARGS["library"],{
+		"bibi",
+		"biblio",
+		"bib",
+		"bibliothek"
+	})
+	MergeTables(CATARGS["armory"],{
+		"wk",
+		"waka",
+		"waffenkammer"
+	})
+	MergeTables(CATARGS["cathedral"],{
+		"kath",
+		"kathe",
+		"kathedrale"
+	})
+	table.insert(CATARGS["rfd"],"hügel")
+	table.insert(CATARGS["st"], "tempel")
+end
+
 MINLVLS = {
-	
+
 }
 
 MINLVLS["quest110"] = 1
@@ -366,6 +511,9 @@ MINLVLS["mara"] = 46
 MINLVLS["st"] = 50
 MINLVLS["brd"] = 52
 MINLVLS["lbrs"] = 55
-MINLVLS["dm"] = 56
+MINLVLS["dem"] = 56
+MINLVLS["deme"] = 56
+MINLVLS["demw"] = 56
+MINLVLS["demn"] = 56
 MINLVLS["strat"] = 58
 MINLVLS["scholo"] = 58

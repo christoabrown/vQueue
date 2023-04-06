@@ -1,21 +1,18 @@
+local vQueueDB = {}
+
 local chatRate = 2 -- limit to 2 msg/sec
 local channelName = "vQueue"
-local filterEnabled = true -- chat filter
 
-local isHost = false
 local hostedCategory = ""
 local realHostedCategory = ""
 local playersQueued = {}
 local chatQueue = {}
 local groups = {}
-
+local notifyForDungeon = ""
 local vQueueFrame = {}
 local catListButtons = {}
-local vQueueFrameShown = false
 local selectedQuery = ""
 local selectedCat = ""
-local isWaitListShown = false
-
 local categories = {}
 local hostListButtons = {}
 local hostListFrame
@@ -35,10 +32,22 @@ local fixingChat = false
 local lastUpdate = 0
 local whoRequestTimer = 0
 local idleMessage = 0
-
 local tankSelected = false
 local healerSelected = false
 local damageSelected = false
+
+do 
+	local _, class2 = UnitClass'player'
+	vQueueDB.class = string.lower(class2)
+	vQueueDB.inCombat = false
+	vQueueDB.isHost = false
+	vQueueDB.isWaitListShown = false
+	vQueueDB.FrameShown = false
+	vQueueDB.filterEnabled = true -- chat filter
+	vQueueDB.bannedLeaders = {}
+end
+
+
 
 local vQueueColors = {
 }
@@ -60,10 +69,13 @@ vQueueColors["GREEN"] = {
 
 local hostOptions = {}
 
+local L = AceLibrary("AceLocale-2.2"):new("vQueue")
+local BZ = AceLibrary("Babble-Zone-2.2")
+local BC = AceLibrary("Babble-Class-2.2")
 vQueue = AceLibrary("AceAddon-2.0"):new("AceHook-2.1")
 
 function Wholefind(Search_string, Word)
- _, F_result = string.gsub(Search_string, '%f[%a]'..Word..'%f[%A]',"")
+ _, F_result = string.gsub(Search_string, Word,"")
  return F_result
 end
 
@@ -97,6 +109,10 @@ function round(num)
     end
 end
 
+function trim(str)
+	return gsub(str, '^%s*(.-)%s*$', '%1')
+end
+
 function split(pString, pPattern)
    local Table = {}  -- NOTE: use {n = 0} in Lua-5.0
    local fpat = "(.-)" .. pPattern
@@ -116,6 +132,17 @@ function split(pString, pPattern)
    return Table
 end
 
+function vQ_IsInArray(array, needle)
+	if(type(array) == "table") then
+		for i, element in pairs(array) do
+			if(i == needle or(type(element) ==  type(needle) and element == needle)) then
+				return i;
+			end
+		end
+	end
+	return nil;
+end
+
 function vQueue:OnInitialize()
 	for i = NUM_CHAT_WINDOWS, 1, -1 do
 		self:Hook(getglobal("ChatFrame"..i), "AddMessage")
@@ -133,6 +160,7 @@ function vQueue:AddMessage(frame, text, r, g, b, id)
 			if vQueueOptions["trade"] and arg9 == "trade - city" and GetChannelName("Trade - City") ~= 0 then blockMsg = true end
 			if vQueueOptions["lfg"] and arg9 == "lookingforgroup" and GetChannelName("LookingForGroup") ~= 0 then blockMsg = true end
 			if vQueueOptions["world"] and arg9 == "world" and GetChannelName("world") ~= 0 then blockMsg = true end
+			if vQueueOptions["china"] and arg9 == "china" and GetChannelName("china") ~= 0 then blockMsg = true end
 		elseif vQueueOptions["onlylfg"] then
 			local foundArg = false
 			local noPunc = filterPunctuation(tostring(text))
@@ -155,20 +183,23 @@ function vQueue:AddMessage(frame, text, r, g, b, id)
 				if vQueueOptions["trade"] and arg9 == "trade - city" and GetChannelName("Trade - City") ~= 0 then blockMsg = true end
 				if vQueueOptions["lfg"] and arg9 == "lookingforgroup" and GetChannelName("LookingForGroup") ~= 0 then blockMsg = true end
 				if vQueueOptions["world"] and arg9 == "world" and GetChannelName("world") ~= 0 then blockMsg = true end
+				if vQueueOptions["china"] and arg9 == "china" and GetChannelName("china") ~= 0 then blockMsg = true end
 			end
 		end
 	end
 	if strfind(event,"CHAT_MSG_CHANNEL") or strfind(event, "CHAT_MSG_CHANNEL_JOIN") or strfind(event, "CHAT_MSG_CHANNEL_LEAVE") or strfind(event, "CHAT_MSG_CHANNEL_NOTICE") then
 		arg9 = string.lower(arg9)
-		if (strfind(arg9, channelName)) and filterEnabled then
+		if (strfind(arg9, channelName)) and vQueueDB.filterEnabled then
 			blockMsg = true
 		end
 	end
-	if (Wholefind(tostring(text), "vqgroup") > 0 or Wholefind(tostring(text), "vqrequest") > 0 or Wholefind(tostring(text), "vqaccept") > 0 or Wholefind(tostring(text), "vqdecline") > 0 or Wholefind(tostring(text), "vqremove") > 0) and filterEnabled then
+	if (Wholefind(tostring(text), "vqgroup") > 0 or Wholefind(tostring(text), "vqrequest") > 0 or Wholefind(tostring(text), "vqaccept") > 0 or Wholefind(tostring(text), "vqdecline") > 0 or Wholefind(tostring(text), "vqremove") > 0) and vQueueDB.filterEnabled then
 		blockMsg = true
 	end
 	if not blockMsg then
-		 self.hooks[frame].AddMessage(frame, string.format("%s", text), r, g, b, id)
+		 self.hooks[frame].AddMessage(frame, tostring(text), r, g, b, id)
+	--self.hooks[frame].AddMessage(frame, string.format("%s", text), r, g, b, id) --update ???
+
 	end
 end
 
@@ -177,6 +208,8 @@ function vQueue_OnLoad()
 	this:RegisterEvent("CHAT_MSG_CHANNEL");
 	this:RegisterEvent("CHAT_MSG_WHISPER");
 	this:RegisterEvent("WHO_LIST_UPDATE");
+	this:RegisterEvent("PLAYER_REGEN_ENABLED");
+	this:RegisterEvent("PLAYER_REGEN_DISABLED");
 end
 
 function filterPunctuation( s )
@@ -194,11 +227,30 @@ function filterPunctuation( s )
 	return newString
 end
 
+local function vQueue_hostlistNameFieldUpdate()
+	local minLvl = tonumber(vQueueFrame.hostlistLevelField:GetText()) or 0
+	local needMates = (healerSelected and damageSelected and tankSelected) and "need all" or ""
+	if needMates == "" then
+		needMates =  tankSelected and "tank" or ""
+		needMates = (healerSelected and tankSelected and ( needMates .. ", heal")) or (healerSelected and "heal") or needMates
+		needMates = (damageSelected and (tankSelected or healerSelected)) and ( needMates .. ", dps") or (damageSelected and "dps") or needMates
+		needMates = needMates ~= "" and ("need ".. needMates) or ""
+	end
+	vQueueFrame.hostlistNameField:SetText("LFM " .. string.upper(titleDung) .. " - " .. minLvl .. "+ "..needMates)
+end
+local function setTooltipFont(tooltip)
+	for i =1, 30 do
+		getglobal(tooltip:GetName().."TextRight"..i):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 12)
+		getglobal(tooltip:GetName().."TextLeft"..i):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 12)
+	end
+end
+
 function vQueue_OnEvent(event)
 	if event == "ADDON_LOADED" and arg1 == "vQueue" then
 		findTimer = GetTime() - 10
-		if MinimapPos == nil then
-			MinimapPos = -30
+		if MinimapPos == nil or type(MinimapPos) == "number" then
+			MinimapPos = {}
+			MinimapPos.x, MinimapPos.y = {-180,-17}
 		end
 		if vQueueOptions == nil then
 			vQueueOptions = {}
@@ -218,75 +270,82 @@ function vQueue_OnEvent(event)
 		if vQueueOptions["world"] == nil then
 			vQueueOptions["world"] = true
 		end
+		if vQueueOptions["china"] == nil then
+			vQueueOptions["china"] = true
+		end
 		if vQueueOptions["onlylfg"] == nil then
 			vQueueOptions["onlylfg"] = true
+		end
+		if vQueueOptions.frameScale == nil then
+			vQueueOptions.frameScale = 1
 		end
 		if selectedRole ==  nil then selectedRole = "" end
 		if isFinding == nil then isFinding = true end
 		if notCaught == nil then notCaught = {} end
-		categories["Miscellaneous"] =
+		categories[L["Miscellaneous"]] =
 		{
 			expanded = false,
-			"Misc:misc"
+			L["Misc"]..":misc"
 		}
-		categories["Raids"] =
+		categories[L["Raids"]] =
 		{
 			expanded = false,
-			"Upper Blackrock:ubrs",
-			"Onyxia's Lair:ony",
-			"Zul'Gurub:zg",
-			"Molten Core:mc",
-			"Ruins of Ahn'Qiraj:ruins",
-			"Blackwing Lair:bwl",
-			"Temple of Ahn'Qiraj:temple",
-			"Naxxramas:naxx"
+			BZ["Upper Blackrock Spire"]..":ubrs",
+			BZ["Onyxia's Lair"]..":ony",
+			BZ["Zul'Gurub"]..":zg",
+			BZ["Molten Core"]..":mc",
+			BZ["Ruins of Ahn'Qiraj"]..":ruins",
+			BZ["Blackwing Lair"]..":bwl",
+			BZ["Temple of Ahn'Qiraj"]..":temple",
+			BZ["Naxxramas"]..":naxx"
 		}
-		categories["Battlegrounds"] =
+		categories[L["Battlegrounds"]] =
 		{
 			expanded = false,
-			"Warsong Gulch:wsg",
-			"Arathi Basin:ab",
-			"Alterac Valley:av"
+			BZ["Warsong Gulch"]..":wsg",
+			BZ["Arathi Basin"]..":ab",
+			BZ["Alterac Valley"]..":av"
 		
 		}
-		categories["Dungeons"] = 
+		categories[L["Dungeons"]] = 
 		{
 			expanded = false,
-			"Ragefire Chasm:rfc",
-			"The Deadmines:dead",
-			"Wailing Caverns:wc",
-			"Shadowfang Keep:sfk",
-			"The Stockade:stock",
-			"Blackfathom Deeps:bfd",
-			"Gnomeregan:gnomer",
-			"Razorfen Kraul:rfk",
-			"The Graveyard:graveyard",
-			"The Library:library",
-			"The Armory:armory",
-			"The Cathedral:cathedral",
-			"Razorfen Downs:rfd",
-			"Uldaman:ulda",
-			"Zul'Farrak:zf",
-			"Maraudon:mara",
-			"The Sunken Temple:st",
-			"Blackrock Depths:brd",
-			"Lower Blackrock:lbrs",
-			"Dire Maul:dm",
-			"Stratholme:strat",
-			"Scholomance:scholo"
-		
+			BZ["Ragefire Chasm"]..":rfc",
+			BZ["The Deadmines"]..":dead",
+			BZ["Wailing Caverns"]..":wc",
+			BZ["Shadowfang Keep"]..":sfk",
+			BZ["The Stockade"]..":stock",
+			BZ["Blackfathom Deeps"]..":bfd",
+			BZ["Gnomeregan"]..":gnomer",
+			BZ["Razorfen Kraul"]..":rfk",
+			L["The Graveyard"]..":graveyard",
+			L["The Library"]..":library",
+			L["The Armory"]..":armory",
+			L["The Cathedral"]..":cathedral",
+			BZ["Razorfen Downs"]..":rfd",
+			BZ["Uldaman"]..":ulda",
+			BZ["Zul'Farrak"]..":zf",
+			BZ["Maraudon"]..":mara",
+			BZ["The Temple of Atal'Hakkar"]..":st",
+			BZ["Blackrock Depths"]..":brd",
+			BZ["Lower Blackrock Spire"]..":lbrs",
+			"Dire Maul East"..":deme",
+			"Dire Maul West"..":demw",
+			"Dire Maul North"..":demn",
+			BZ["Stratholme"]..":strat",
+			BZ["Scholomance"]..":scholo"
 		}
-		categories["Quest Groups"] =
+		categories[L["Quest Groups"]] =
 		{
 			expanded = false,
-			"Quests 1-10:quest110",
-			"Quests 10-20:quest1020",
-			"Quests 20-30:quest2030",
-			"Quests 30-40:quest3040",
-			"Quests 40-50:quest4050",
-			"Quests 50-60:quest5060"
+			L["Quests"].." 1-10:quest110",
+			L["Quests"].." 10-20:quest1020",
+			L["Quests"].." 20-30:quest2030",
+			L["Quests"].." 30-40:quest3040",
+			L["Quests"].." 40-50:quest4050",
+			L["Quests"].." 50-60:quest5060"
 		}
-		
+
 		for k, v in pairs(categories) do
 			for kk, vv in pairs(categories[k]) do
 				if type(vv) == "string" then
@@ -298,14 +357,14 @@ function vQueue_OnEvent(event)
 			end
 		end
 		groups["waitlist"] = {}
-		
-		playersQueued = 
+
+		playersQueued =
 		{
 
 		}
 		local vQueueFrameBackdrop = {
 		  -- path to the background texture
-		  bgFile = "Interface\\AddOns\\vQueue\\media\\white",  
+		  bgFile = "Interface\\AddOns\\vQueue\\media\\white",
 		  -- path to the border texture
 		  edgeFile = "Interface\\AddOns\\vQueue\\media\\border",
 		  -- true to repeat the background texture to fill the frame, false to scale it
@@ -322,11 +381,30 @@ function vQueue_OnEvent(event)
 			bottom = 1
 		  }
 		}
-		vQueueFrame = CreateFrame("Frame", UIParent)
-		vQueueFrame:SetWidth(594)
-		vQueueFrame:SetHeight(395)
+		local s = {}
+		if GetLocale() == "deDE" then
+			s = { w = 644, h = 395,
+			      catList 			= { w = 168, h = 355},
+ 			      optionsFrame 		= { w = 300 , h = 130 },
+			      hostlistFindButton 	= { x = -115, y = 20},
+			      filterCheckOnlyFilter 	= { fs = 8 },
+  			    }
+		else
+			s = { w = 614, h = 395,
+			      catList 			= { w = 138, h = 355},
+			      optionsFrame 		= { w = 200 , h = 130 },
+			      hostlistFindButton 	= { x = -65, y = 20},
+			      filterCheckOnlyFilter 	= { fs = 10 },
+  			    }
+		end
+
+		vQueueFrame = CreateFrame("Frame","vQueueFrame",UIParent)
+		table.insert(UISpecialFrames, "vQueueFrame");
+		vQueueFrame:SetWidth(s.w)
+		vQueueFrame:SetHeight(s.h)
 		vQueueFrame:ClearAllPoints()
-		vQueueFrame:SetPoint("CENTER", UIParent,"CENTER") 
+		vQueueFrame:SetPoint("CENTER", UIParent,"CENTER")
+		vQueueFrame:SetFrameStrata("FULLSCREEN_DIALOG")
 		vQueueFrame:SetMovable(true)
 		vQueueFrame:EnableMouse(true)
 		vQueueFrame:SetBackdrop(vQueueFrameBackdrop)
@@ -335,7 +413,7 @@ function vQueue_OnEvent(event)
 			vQueueFrame:StartMoving()
 			vQueueFrame.hostlistNameField:ClearFocus()
 			vQueueFrame.hostlistLevelField:ClearFocus()
-			if isHost or isFinding then
+			if vQueueDB.isHost or isFinding then
 				vQueueFrame.hostlistRoleText:SetText("")
 			end
 		end)
@@ -345,26 +423,36 @@ function vQueue_OnEvent(event)
 		vQueueFrame:SetScript("OnHide", function()
 			vQueueFrame.catList:Hide()
 			vQueueFrame.hostlist:Hide()
+			vQueueDB.FrameShown = false
 		end)
 		vQueueFrame:SetScript("OnShow", function()
 			vQueue_UpdateHostScroll(scrollbar:GetValue())
 			vQueue_updateCatColors()
 		end)
-		
+
+		vQueueFrame.closeButtonX = CreateFrame("Button", "vQueueButton", vQueueFrame,"UIPanelCloseButton")
+		vQueueFrame.closeButtonX:SetPoint("TOPRIGHT", vQueueFrame, "TOPRIGHT", 2, 2)
+		vQueueFrame.closeButtonX:SetScript("OnClick", function()
+			vQueueFrame:Hide()
+			vQueueFrame.catList:Hide()
+			vQueueFrame.hostlist:Hide()
+			vQueueDB.FrameShown = false
+		end)
+
 		vQueueFrame.closeButton = vQueue_newButton(vQueueFrame, 10)
 		vQueueFrame.closeButton:SetPoint("BOTTOMRIGHT", vQueueFrame, "BOTTOMRIGHT", -6, 3)
-		vQueueFrame.closeButton:SetText("Close")
+		vQueueFrame.closeButton:SetText(CLOSE)
 		vQueueFrame.closeButton:SetWidth(vQueueFrame.closeButton:GetTextWidth()+4)
 		vQueueFrame.closeButton:SetScript("OnClick", function()
 			vQueueFrame:Hide()
 			vQueueFrame.catList:Hide()
 			vQueueFrame.hostlist:Hide()
-			vQueueFrameShown = false
+			vQueueDB.FrameShown = false
 		end)
-		
+
 		vQueueFrame.optionsButton = vQueue_newButton(vQueueFrame, 10)
 		vQueueFrame.optionsButton:SetPoint("BOTTOMLEFT", vQueueFrame, "BOTTOMLEFT", 6, 3)
-		vQueueFrame.optionsButton:SetText("Options")
+		vQueueFrame.optionsButton:SetText(L["Options"])
 		vQueueFrame.optionsButton:SetWidth(vQueueFrame.optionsButton:GetTextWidth()+3)
 		vQueueFrame.optionsButton:SetScript("OnMouseDown", function()
 			if vQueueFrame.optionsFrame:IsShown() then
@@ -373,12 +461,13 @@ function vQueue_OnEvent(event)
 				vQueueFrame.optionsFrame:Show()
 			end
 		end)
-		
-		vQueueFrame.catList = CreateFrame("ScrollFrame", vQueueFrame)
+
+		vQueueFrame.catList = CreateFrame("ScrollFrame","vQCatlist", vQueueFrame)
 		vQueueFrame.catList:ClearAllPoints()
 		vQueueFrame.catList:SetPoint("LEFT", vQueueFrame, "LEFT", 5, -5)
-		vQueueFrame.catList:SetWidth(118)
-		vQueueFrame.catList:SetHeight(355)
+		vQueueFrame.catList:SetFrameLevel(vQueueFrame:GetFrameLevel()+1)
+		vQueueFrame.catList:SetWidth(s.catList.w)
+		vQueueFrame.catList:SetHeight(s.catList.h)
 		vQueueFrame.catList:EnableMouseWheel(true)
 		vQueueFrame.catList:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.catList:SetBackdropColor(20/255, 20/255, 20/255, 0.9)
@@ -390,10 +479,11 @@ function vQueue_OnEvent(event)
 			end
 			realScroll = true
 		end)
-		
-		vQueueFrame.hostlist = CreateFrame("ScrollFrame", vQueueFrame)
+
+		vQueueFrame.hostlist = CreateFrame("ScrollFrame","vQHostlist", vQueueFrame)
 		vQueueFrame.hostlist:ClearAllPoints()
 		vQueueFrame.hostlist:SetPoint("RIGHT", vQueueFrame, "RIGHT", -5, -5)
+		vQueueFrame.hostlist:SetFrameLevel(vQueueFrame:GetFrameLevel()+1)
 		vQueueFrame.hostlist:SetWidth(465)
 		vQueueFrame.hostlist:SetHeight(355)
 		vQueueFrame.hostlist:EnableMouseWheel(true)
@@ -408,8 +498,10 @@ function vQueue_OnEvent(event)
 		end)
 		CreateFrame( "GameTooltip", "groupToolTip", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
 		CreateFrame( "GameTooltip", "playerQueueToolTip", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
+		setTooltipFont(groupToolTip)
+		setTooltipFont(playerQueueToolTip)
 		hostListFrame = vQueueFrame.hostlist
-		
+
 		vQueueFrame.hostlistTopSection = CreateFrame("Frame", nil, vQueueFrame.hostlist)
 		vQueueFrame.hostlistTopSection:ClearAllPoints()
 		vQueueFrame.hostlistTopSection:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 0 , 0)
@@ -417,14 +509,14 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistTopSection:SetHeight(vQueueFrame.hostlist:GetHeight() * 1/5)
 		vQueueFrame.hostlistTopSection:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.hostlistTopSection:SetBackdropColor(10/255, 10/255, 10/255, 0.4)
-		vQueueFrame.hostlistTopSection:SetFrameLevel(2)
-		
+		vQueueFrame.hostlistTopSection:SetFrameLevel (vQueueFrame.hostlist:GetFrameLevel() + 2)
+
 		vQueueFrame.hostlistTopSectionBg = vQueueFrame.hostlistTopSection:CreateTexture(nil, "BACKGROUND")
 		vQueueFrame.hostlistTopSectionBg:SetTexture(0, 0, 0, 0)
 		vQueueFrame.hostlistTopSectionBg:SetPoint("BOTTOMLEFT", vQueueFrame.hostlistTopSection, "BOTTOMLEFT", 1, 1)
 		vQueueFrame.hostlistTopSectionBg:SetWidth(vQueueFrame.hostlistTopSection:GetWidth()-2)
 		vQueueFrame.hostlistTopSectionBg:SetHeight(vQueueFrame.hostlistTopSection:GetHeight()-2)
-		
+
 		vQueueFrame.hostlistBotShadow = vQueueFrame.hostlistTopSection:CreateTexture(nil, "OVERLAY")
 		vQueueFrame.hostlistBotShadow:SetTexture(0, 0, 0, 1)
 		vQueueFrame.hostlistBotShadow:SetPoint("BOTTOM", vQueueFrame.hostlist, "BOTTOM", 0, 1)
@@ -432,112 +524,112 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistBotShadow:SetHeight(40)
 		vQueueFrame.hostlistBotShadow:SetGradientAlpha("VERTICAL", 0, 0, 0, 1, 0, 0, 0, 0)
 		vQueueFrame.hostlistBotShadow:Hide()
-		
+
 		vQueueFrame.catlistBotShadow = CreateFrame("Frame", nil, vQueueFrame.catList)
 		vQueueFrame.catlistBotShadow:SetAllPoints()
 		vQueueFrame.catlistBotShadow:SetWidth(vQueueFrame.catList:GetWidth())
 		vQueueFrame.catlistBotShadow:SetHeight(vQueueFrame.catList:GetHeight())
-		vQueueFrame.catlistBotShadow:SetFrameLevel(2)
-		
+		vQueueFrame.catlistBotShadow:SetFrameLevel(vQueueFrame.catList:GetFrameLevel() +2)
+
 		vQueueFrame.catlistBotShadowbg = vQueueFrame.catlistBotShadow:CreateTexture(nil, "OVERLAY")
 		vQueueFrame.catlistBotShadowbg:SetTexture(0, 0, 0, 1)
 		vQueueFrame.catlistBotShadowbg:SetPoint("BOTTOM", vQueueFrame.catList, "BOTTOM", 0, 1)
 		vQueueFrame.catlistBotShadowbg:SetWidth(vQueueFrame.catList:GetWidth())
 		vQueueFrame.catlistBotShadowbg:SetHeight(40)
 		vQueueFrame.catlistBotShadowbg:SetGradientAlpha("VERTICAL", 0, 0, 0, 1, 0, 0, 0, 0)
-		
+
 		--hostframe waitlist header strings
 		vQueueFrame.hostTitle = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitle:ClearAllPoints()
 		vQueueFrame.hostTitle:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 0 , -vQueueFrame.hostlistTopSection:GetHeight()-2)
-		vQueueFrame.hostTitle:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitle:SetText("Name")
+		vQueueFrame.hostTitle:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitle:SetText(L["Name"])
 		vQueueFrame.hostTitle:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitle:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitle:SetWidth(vQueueFrame.hostTitle:GetTextWidth())
 		vQueueFrame.hostTitle:SetHeight(vQueueFrame.hostTitle:GetTextHeight())
 		vQueueFrame.hostTitle:Hide()
-		
+
 		vQueueFrame.hostTitleLevel = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleLevel:ClearAllPoints()
 		vQueueFrame.hostTitleLevel:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 149, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleLevel:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleLevel:SetText("Level")
+		vQueueFrame.hostTitleLevel:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleLevel:SetText(L["Level"])
 		vQueueFrame.hostTitleLevel:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleLevel:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleLevel:SetWidth(vQueueFrame.hostTitleLevel:GetTextWidth())
 		vQueueFrame.hostTitleLevel:SetHeight(vQueueFrame.hostTitleLevel:GetTextHeight())
 		vQueueFrame.hostTitleLevel:Hide()
-		
-		
+
+
 		vQueueFrame.hostTitleClass = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleClass:ClearAllPoints()
 		vQueueFrame.hostTitleClass:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 245, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleClass:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleClass:SetText("Class")
+		vQueueFrame.hostTitleClass:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleClass:SetText(L["Class"])
 		vQueueFrame.hostTitleClass:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleClass:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleClass:SetWidth(vQueueFrame.hostTitleClass:GetTextWidth())
 		vQueueFrame.hostTitleClass:SetHeight(vQueueFrame.hostTitleClass:GetTextHeight())
 		vQueueFrame.hostTitleClass:Hide()
-		
+
 		vQueueFrame.hostTitleRole = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleRole:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 320, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleRole:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleRole:SetText("Role")
+		vQueueFrame.hostTitleRole:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleRole:SetText(L["Role"])
 		vQueueFrame.hostTitleRole:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleRole:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleRole:SetWidth(vQueueFrame.hostTitleRole:GetTextWidth())
 		vQueueFrame.hostTitleRole:SetHeight(vQueueFrame.hostTitleRole:GetTextHeight())
-		vQueueFrame.hostTitleRole:Hide()	
+		vQueueFrame.hostTitleRole:Hide()
 		-----------------------------------------------------------------
-		
+
 		--hostframe find header strings
 		vQueueFrame.hostTitleFindName = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleFindName:ClearAllPoints()
 		vQueueFrame.hostTitleFindName:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 0, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleFindName:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleFindName:SetText("Title")
+		vQueueFrame.hostTitleFindName:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleFindName:SetText(L["Title"])
 		vQueueFrame.hostTitleFindName:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleFindName:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleFindName:SetWidth(vQueueFrame.hostTitleFindName:GetTextWidth())
 		vQueueFrame.hostTitleFindName:SetHeight(vQueueFrame.hostTitleFindName:GetTextHeight())
-		
+
 		vQueueFrame.hostTitleFindLeader = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleFindLeader:ClearAllPoints()
 		vQueueFrame.hostTitleFindLeader:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 209, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleFindLeader:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleFindLeader:SetText("Leader")
+		vQueueFrame.hostTitleFindLeader:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleFindLeader:SetText(L["Leader"])
 		vQueueFrame.hostTitleFindLeader:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleFindLeader:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleFindLeader:SetWidth(vQueueFrame.hostTitleFindLeader:GetTextWidth())
 		vQueueFrame.hostTitleFindLeader:SetHeight(vQueueFrame.hostTitleFindLeader:GetTextHeight())
-		
+
 		vQueueFrame.hostTitleFindLevel = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleFindLevel:ClearAllPoints()
 		vQueueFrame.hostTitleFindLevel:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 278, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleFindLevel:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleFindLevel:SetText("Level")
+		vQueueFrame.hostTitleFindLevel:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleFindLevel:SetText(L["Level"])
 		vQueueFrame.hostTitleFindLevel:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleFindLevel:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleFindLevel:SetWidth(vQueueFrame.hostTitleFindLevel:GetTextWidth())
 		vQueueFrame.hostTitleFindLevel:SetHeight(vQueueFrame.hostTitleFindLevel:GetTextHeight())
-		
+
 		vQueueFrame.hostTitleFindSize = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleFindSize:ClearAllPoints()
 		vQueueFrame.hostTitleFindSize:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 312, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleFindSize:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleFindSize:SetText("Size")
+		vQueueFrame.hostTitleFindSize:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleFindSize:SetText(L["Size"])
 		vQueueFrame.hostTitleFindSize:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleFindSize:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleFindSize:SetWidth(vQueueFrame.hostTitleFindLeader:GetTextWidth())
 		vQueueFrame.hostTitleFindSize:SetHeight(vQueueFrame.hostTitleFindLeader:GetTextHeight())
-		
+
 		vQueueFrame.hostTitleFindRoles = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.hostTitleFindRoles:ClearAllPoints()
 		vQueueFrame.hostTitleFindRoles:SetPoint("TOPLEFT", vQueueFrame.hostlist, "TOPLEFT", 361, -vQueueFrame.hostlistTopSection:GetHeight() - 2)
-		vQueueFrame.hostTitleFindRoles:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.hostTitleFindRoles:SetText("Role(s)")
+		vQueueFrame.hostTitleFindRoles:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.hostTitleFindRoles:SetText(L["Role(s)"])
 		vQueueFrame.hostTitleFindRoles:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostTitleFindRoles:SetPushedTextOffset(0,0)
 		vQueueFrame.hostTitleFindRoles:SetWidth(vQueueFrame.hostTitleFindRoles:GetTextWidth())
@@ -548,7 +640,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostTitleFindSize:Hide()
 		vQueueFrame.hostTitleFindRoles:Hide()
 		--------------------------------------------------------------------------------------------------------
-		
+
 		vQueueFrame.hostlistHeal = CreateFrame("Button", nil, vQueueFrame.hostlistTopSection)
 		vQueueFrame.hostlistHeal:ClearAllPoints()
 		vQueueFrame.hostlistHeal:SetPoint("RIGHT", vQueueFrame.hostlistTopSection, "RIGHT", -32, 0)
@@ -560,7 +652,7 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistDpsCheck:Hide()
 			vQueueFrame.hostlistHealCheck:Show()
 			vQueueFrame.hostlistRoleText:SetText("")
-			vQueueFrame.hostlistHostButton:Show()
+		--	vQueueFrame.hostlistHostButton:Show()
 			selectedRole = "Healer"
 		end)
 		vQueueFrame.hostlistHeal:SetScript("OnEnter", function()
@@ -569,18 +661,18 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHeal:SetScript("OnLeave", function()
 			vQueueFrame.hostlistHealTex:SetVertexColor(1, 1, 1)
 		end)
-		
+
 		vQueueFrame.hostlistHealTex = vQueueFrame.hostlistHeal:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.hostlistHealTex:SetTexture("Interface\\AddOns\\vQueue\\media\\Healer")
 		vQueueFrame.hostlistHealTex:SetPoint("TOP", vQueueFrame.hostlistHeal, "TOP", 0, 0)
 		vQueueFrame.hostlistHealTex:SetWidth(vQueueFrame.hostlistHeal:GetWidth())
 		vQueueFrame.hostlistHealTex:SetHeight(vQueueFrame.hostlistHeal:GetHeight())
-		
+
 		vQueueFrame.hostlistHealCheck = vQueueFrame.hostlistHeal:CreateTexture(nil, "OVERLAY")
 		vQueueFrame.hostlistHealCheck:SetTexture("Interface\\BUTTONS\\UI-CheckBox-Check")
 		vQueueFrame.hostlistHealCheck:SetVertexColor(0.1,0.8,0.1)
 		vQueueFrame.hostlistHealCheck:SetAllPoints()
-		
+
 		vQueueFrame.hostlistDps = CreateFrame("Button", nil, vQueueFrame.hostlistTopSection)
 		vQueueFrame.hostlistDps:SetPoint("RIGHT", vQueueFrame.hostlistTopSection, "RIGHT",  0, 0)
 		vQueueFrame.hostlistDps:SetWidth(32)
@@ -598,18 +690,18 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistDps:SetScript("OnLeave", function()
 			vQueueFrame.hostlistDpsTex:SetVertexColor(1, 1, 1)
 		end)
-		
+
 		vQueueFrame.hostlistDpsTex = vQueueFrame.hostlistDps:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.hostlistDpsTex:SetTexture("Interface\\AddOns\\vQueue\\media\\Damage")
 		vQueueFrame.hostlistDpsTex:SetPoint("TOP", vQueueFrame.hostlistDps, "TOP", 0, 0)
 		vQueueFrame.hostlistDpsTex:SetWidth(vQueueFrame.hostlistDps:GetWidth())
 		vQueueFrame.hostlistDpsTex:SetHeight(vQueueFrame.hostlistDps:GetHeight())
-		
+
 		vQueueFrame.hostlistDpsCheck = vQueueFrame.hostlistDps:CreateTexture(nil, "OVERLAY")
 		vQueueFrame.hostlistDpsCheck:SetTexture("Interface\\BUTTONS\\UI-CheckBox-Check")
 		vQueueFrame.hostlistDpsCheck:SetVertexColor(0.1,0.8,0.1)
 		vQueueFrame.hostlistDpsCheck:SetAllPoints()
-		
+
 		vQueueFrame.hostlistTank = CreateFrame("Button", nil, vQueueFrame.hostlistTopSection)
 		vQueueFrame.hostlistTank:SetPoint("RIGHT", vQueueFrame.hostlistTopSection, "RIGHT", -64 , 0)
 		vQueueFrame.hostlistTank:SetWidth(32)
@@ -627,24 +719,24 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistTank:SetScript("OnLeave", function()
 			vQueueFrame.hostlistTankTex:SetVertexColor(1, 1, 1)
 		end)
-				
+
 		vQueueFrame.hostlistTankTex = vQueueFrame.hostlistTank:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.hostlistTankTex:SetTexture("Interface\\AddOns\\vQueue\\media\\Tank")
 		vQueueFrame.hostlistTankTex:SetPoint("TOP", vQueueFrame.hostlistTank, "TOP", 0, 0)
 		vQueueFrame.hostlistTankTex:SetWidth(vQueueFrame.hostlistTank:GetWidth())
 		vQueueFrame.hostlistTankTex:SetHeight(vQueueFrame.hostlistTank:GetHeight())
-		
+
 		vQueueFrame.hostlistTankCheck = vQueueFrame.hostlistTank:CreateTexture(nil, "OVERLAY")
 		vQueueFrame.hostlistTankCheck:SetTexture("Interface\\BUTTONS\\UI-CheckBox-Check")
 		vQueueFrame.hostlistTankCheck:SetVertexColor(0.1,0.8,0.1)
 		vQueueFrame.hostlistTankCheck:SetAllPoints()
-		
+
 		vQueueFrame.hostlistRoleText = CreateFrame("Button", nil, vQueueFrame.hostlistTopSection)
 		vQueueFrame.hostlistRoleText:ClearAllPoints()
-		vQueueFrame.hostlistRoleText:SetPoint("BOTTOMLEFT", vQueueFrame.hostlistTopSection, "BOTTOMLEFT", 5, 5)
+		vQueueFrame.hostlistRoleText:SetPoint("CENTER", vQueueFrame.hostlistTopSection, "CENTER", 0, 54)
 		vQueueFrame.hostlistRoleText:EnableMouse(false)
-		vQueueFrame.hostlistRoleText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-		vQueueFrame.hostlistRoleText:SetText("(Select a role to start finding)")
+		vQueueFrame.hostlistRoleText:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10, "OUTLINE")
+		vQueueFrame.hostlistRoleText:SetText(L["(Select a role to start finding)"])
 		vQueueFrame.hostlistRoleText:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostlistRoleText:SetWidth(vQueueFrame.hostlistRoleText:GetTextWidth())
 		vQueueFrame.hostlistRoleText:SetHeight(vQueueFrame.hostlistRoleText:GetTextHeight())
@@ -652,7 +744,7 @@ function vQueue_OnEvent(event)
 			this:SetWidth(vQueueFrame.hostlistRoleText:GetTextWidth())
 			this:SetHeight(vQueueFrame.hostlistRoleText:GetTextHeight())
 		end)
-		
+
 		if selectedRole == "Healer" then
 			vQueueFrame.hostlistTankCheck:Hide()
 			vQueueFrame.hostlistDpsCheck:Hide()
@@ -669,21 +761,71 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistHealCheck:Hide()
 			vQueueFrame.hostlistRoleText:SetText("")
 		end
-		
+
+-- Sven Button
+
+		vQueueFrame.watchListButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
+		vQueueFrame.watchListButton:SetPoint("BOTTOMLEFT", vQueueFrame.hostlistTopSection, "BOTTOMLEFT", 3, 5)
+		vQueueFrame.watchListButton:SetText(L["Notify about groups"])
+		vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+30)
+		vQueueFrame.watchListButton:SetScript("OnClick", function()
+			if not string.find(notifyForDungeon,selectedQuery) then
+			titleDung = selectedQuery
+				notifyForDungeon = notifyForDungeon == "" and titleDung or notifyForDungeon .. "/" .. titleDung
+			vQueueFrame.watchListButton:SetText(L["Notified for "] .. notifyForDungeon)
+				vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+30)
+			vQueueFrame.clearNotifyButton:Show()
+			end
+		end)
+
+		vQueueFrame.clearNotifyButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
+		vQueueFrame.clearNotifyButton:SetPoint("BOTTOMLEFT", vQueueFrame.watchListButton, "BOTTOMRIGHT", 0, 0)
+		vQueueFrame.clearNotifyButton:SetText(L["Clear"])
+		vQueueFrame.clearNotifyButton:SetWidth(vQueueFrame.clearNotifyButton:GetTextWidth()+10)
+		vQueueFrame.clearNotifyButton:SetScript("OnClick", function()
+			notifyForDungeon = ""
+			vQueueFrame.watchListButton:SetText(L["Notify about groups"])
+			vQueueFrame.watchListButton:SetWidth(vQueueFrame.watchListButton:GetTextWidth()+30)
+			vQueueFrame.clearNotifyButton:Hide()
+		end)
+		vQueueFrame.clearNotifyButton:Hide()
+
+		vQueueFrame.watchListButton:SetScript("OnEnter", function()
+			playerQueueToolTip:SetOwner( this, "ANCHOR_CURSOR" );
+			playerQueueToolTip:AddLine(L["Don't forget to choose role on the right side"], 1, 1, 1, 1)
+			playerQueueToolTip:Show()
+		end)
+
+		vQueueFrame.clearNotifyButton:SetScript("OnEnter", function()
+			playerQueueToolTip:SetOwner( this, "ANCHOR_CURSOR" );
+			playerQueueToolTip:AddLine(L["Clears the search, you will not be notified anymore"], 1, 1, 1, 1)
+			playerQueueToolTip:Show()
+		end)
+
+		vQueueFrame.watchListButton:SetScript("OnLeave", function()
+			playerQueueToolTip:Hide()
+		end)
+
+		vQueueFrame.clearNotifyButton:SetScript("OnLeave", function()
+			playerQueueToolTip:Hide()
+		end)
+
+-- Sven Button Ende
+
 		vQueueFrame.hostlistHostButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
 		vQueueFrame.hostlistHostButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistTopSection, "BOTTOMRIGHT", -3, 5)
-		vQueueFrame.hostlistHostButton:SetText("Start new group")
+		vQueueFrame.hostlistHostButton:SetText(L["Start new group"])
 		vQueueFrame.hostlistHostButton:SetWidth(vQueueFrame.hostlistHostButton:GetTextWidth()+10)
 		vQueueFrame.hostlistHostButton:SetScript("OnClick", function()
-			if UnitLevel("player") < 5 then 
-				vQueueFrame.hostlistRoleText:SetText("(You must be at least level 5 to use this)")
+			if UnitLevel("player") < 5 then
+				vQueueFrame.hostlistRoleText:SetText(L["(You must be at least level 5 to use this)"])
 				return
 			end
 			titleDung = selectedQuery
-			if titleDung == "dead" then titleDung = "DM" end
-			vQueueFrame.hostlistNameField:SetText("LFM " .. string.upper(selectedQuery) .. " - " .. getglobal("MINLVLS")[selectedQuery] .. "+ need all")
+			titleDung = (selectedQuery == "dead" and "VC") or (selectedQuery == "dem" and "DM") or selectedQuery
+
 			vQueueFrame.hostlistHostButton:Hide()
-			isWaitListShown = true
+			vQueueDB.isWaitListShown = true
 			vQueueFrame.hostTitleFindName:Hide()
 			vQueueFrame.hostTitleFindLeader:Hide()
 			vQueueFrame.hostTitleFindLevel:Hide()
@@ -694,30 +836,31 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistNameField:Show()
 			vQueueFrame.hostlistCreateButton:Show()
 			vQueueFrame.hostlistCancelButton:Show()
-			vQueueFrame.hostlistCreateButton:SetText("Create group")
+			vQueueFrame.hostlistCreateButton:SetText(L["Create group"])
 			scrollbar:SetValue(1)
 			hostedCategory = selectedQuery
 			prevSelected = selectedQuery
 			selectedQuery = "waitlist"
+			vQueue_hostlistNameFieldUpdate()
 			vQueue_ShowGroups(selectedQuery, prevSelected)
 		end)
 		vQueueFrame.hostlistHostButton:SetScript("OnEnter", function()
 			playerQueueToolTip:SetOwner( this, "ANCHOR_CURSOR" );
-			playerQueueToolTip:AddLine("Find players for", 1, 1, 1, 1)
+			playerQueueToolTip:AddLine(L["Find players for"], 1, 1, 1, 1)
 			playerQueueToolTip:AddLine(realHostedCategory, vQueueColors["GREEN"][1], vQueueColors["GREEN"][2], vQueueColors["GREEN"][3], 1)
 			playerQueueToolTip:Show()
 		end)
 		vQueueFrame.hostlistHostButton:SetScript("OnLeave", function()
 			playerQueueToolTip:Hide()
 		end)
-		
+
 		vQueueFrame.hostlistEditButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
 		vQueueFrame.hostlistEditButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistTopSection, "BOTTOMRIGHT", -3, 5)
-		vQueueFrame.hostlistEditButton:SetText("Edit group")
+		vQueueFrame.hostlistEditButton:SetText(L["Edit group"])
 		vQueueFrame.hostlistEditButton:SetWidth(vQueueFrame.hostlistEditButton:GetTextWidth()+5)
 		vQueueFrame.hostlistEditButton:SetScript("OnClick", function()
 			vQueueFrame.hostlistEditButton:Hide()
-			isWaitListShown = true
+			vQueueDB.isWaitListShown = true
 			scrollbar:SetValue(1)
 			prevSelected = selectedQuery
 			selectedQuery = "waitlist"
@@ -732,13 +875,13 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistCreateButton:Show()
 			vQueueFrame.hostlistBotShadow:SetHeight(400)
 			vQueueFrame.hostlistBotShadow:Show()
-			vQueueFrame.hostlistCreateButton:SetText("Save")
+			vQueueFrame.hostlistCreateButton:SetText(SAVE)
 		end)
 		vQueueFrame.hostlistEditButton:Hide()
-		
+
 		vQueueFrame.hostlistUnlistButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
 		vQueueFrame.hostlistUnlistButton:SetPoint("TOPRIGHT", vQueueFrame.hostlistTopSection, "TOPRIGHT", -3, -5)
-		vQueueFrame.hostlistUnlistButton:SetText("Unlist group")
+		vQueueFrame.hostlistUnlistButton:SetText(L["Unlist group"])
 		vQueueFrame.hostlistUnlistButton:SetWidth(vQueueFrame.hostlistUnlistButton:GetTextWidth()+5)
 		vQueueFrame.hostlistUnlistButton:SetScript("OnClick", function()
 			vQueueFrame.hostlistEditButton:Hide()
@@ -747,8 +890,8 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostlistLevelField:Hide()
 			vQueueFrame.hostlistNameField:Hide()
 			vQueueFrame.hostlistCreateButton:Hide()
-			isHost = false
-			isWaitListShown = false
+			vQueueDB.isHost = false
+			vQueueDB.isWaitListShown = false
 			vQueueFrame.hostTitle:Hide()
 			vQueueFrame.hostTitleRole:Hide()
 			vQueueFrame.hostTitleClass:Hide()
@@ -767,10 +910,10 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostTitleFindRoles:Show()
 		end)
 		vQueueFrame.hostlistUnlistButton:Hide()
-		
+
 		vQueueFrame.hostlistWaitListButton = vQueue_newButton(vQueueFrame.hostlistTopSection, 10)
-		vQueueFrame.hostlistWaitListButton:SetPoint("TOPRIGHT", vQueueFrame.hostlistTopSection, "TOPRIGHT", -75, -5)
-		vQueueFrame.hostlistWaitListButton:SetText("Wait list")
+		vQueueFrame.hostlistWaitListButton:SetPoint("BOTTOMRIGHT", vQueueFrame.hostlistUnlistButton, "BOTTOMLEFT", -10, 0)
+		vQueueFrame.hostlistWaitListButton:SetText(L["Wait list"])
 		vQueueFrame.hostlistWaitListButton:SetWidth(vQueueFrame.hostlistWaitListButton:GetTextWidth()+10)
 		vQueueFrame.hostlistWaitListButton:SetScript("OnClick", function()
 			vQueueFrame.topsectiontitle:SetText(realHostedCategory .. "(" .. getglobal("MINLVLS")[hostedCategory] .. ")")
@@ -780,13 +923,13 @@ function vQueue_OnEvent(event)
 				vQueueFrame.hostlistTopSectionBg:SetTexture(0, 0, 0, 0)
 			end
 			for k, v in pairs(catListButtons) do
-				if split(v:GetText(), "%(")[1] == realHostedCategory then
+				if trim(split(v:GetText(), "%[")[1]) == realHostedCategory then
 					vQueueFrame.catListHighlight:SetParent(v)
 					vQueueFrame.catListHighlight:SetPoint("LEFT", v, "LEFT", -11, 0)
 					vQueueFrame.catListHighlight:Show()
 				end
 			end
-			isWaitListShown = true
+			vQueueDB.isWaitListShown = true
 			vQueueFrame.hostTitle:Show()
 			vQueueFrame.hostTitleRole:Show()
 			vQueueFrame.hostTitleClass:Show()
@@ -803,20 +946,20 @@ function vQueue_OnEvent(event)
 			vQueueFrame.hostTitleFindRoles:Hide()
 		end)
 		vQueueFrame.hostlistWaitListButton:SetScript("OnUpdate", function()
-			this:SetText("Wait list(" .. tablelength(groups["waitlist"]) .. ")")
+			this:SetText(L["Wait list"] .. "(" .. tablelength(groups["waitlist"]) .. ")")
 			this:SetWidth(this:GetTextWidth()+10)
 		end)
 		vQueueFrame.hostlistWaitListButton:Hide()
-		
+
 		vQueueFrame.optionsFrame = CreateFrame("Frame", nil, vQueueFrame)
-		vQueueFrame.optionsFrame:SetWidth(200)
-		vQueueFrame.optionsFrame:SetHeight(130)
+		vQueueFrame.optionsFrame:SetWidth(s.optionsFrame.w)
+		vQueueFrame.optionsFrame:SetHeight(s.optionsFrame.h)
 		vQueueFrame.optionsFrame:SetPoint("BOTTOM", vQueueFrame, "TOP")
 		vQueueFrame.optionsFrame:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.optionsFrame:SetBackdropColor(10/255, 10/255, 10/255, 0.8)
 		vQueueFrame.optionsFrame:EnableMouse(true)
 		vQueueFrame.optionsFrame:SetMovable(true)
-		vQueueFrame.optionsFrame:SetFrameLevel(4)
+		vQueueFrame.optionsFrame:SetFrameLevel(vQueueFrame:GetFrameLevel() + 4)
 		vQueueFrame.optionsFrame:SetClampedToScreen(true)
 		vQueueFrame.optionsFrame:SetScript("OnMouseDown", function()
 			this:StartMoving()
@@ -825,14 +968,14 @@ function vQueue_OnEvent(event)
 			this:StopMovingOrSizing()
 		end)
 		vQueueFrame.optionsFrame:Hide()
-		
+
 		vQueueFrame.hostlistFindButton = CreateFrame("CheckButton", "findButtonCheck", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
-		vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.optionsFrame, "BOTTOMRIGHT", -65, 20)
-		getglobal(vQueueFrame.hostlistFindButton:GetName() .."Text"):SetText("Find groups")
+		vQueueFrame.hostlistFindButton:SetPoint("BOTTOMRIGHT", vQueueFrame.optionsFrame, "BOTTOMRIGHT", s.hostlistFindButton.x, s.hostlistFindButton.y)
+		getglobal(vQueueFrame.hostlistFindButton:GetName() .."Text"):SetText(L["Find groups"])
 		vQueueFrame.hostlistFindButton:SetWidth(16)
 		vQueueFrame.hostlistFindButton:SetHeight(16)
 		vQueueFrame.hostlistFindButton:SetChecked(isFinding)
-		
+
 		vQueueFrame.hostlistFindButton:SetScript("OnClick", function()
 			if this:GetChecked() then
 				vQueueFrame.hostlistHostButton:Show()
@@ -845,11 +988,11 @@ function vQueue_OnEvent(event)
 				isFinding = false
 			end
 		end)
-		
-		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist )
+
+		vQueueFrame.hostlistNameField = CreateFrame("EditBox", nil, vQueueFrame.hostlist)
 		vQueueFrame.hostlistNameField:SetPoint("CENTER", vQueueFrame.hostlist, "CENTER", 0, 20)
 		vQueueFrame.hostlistNameField:SetAutoFocus(false)
-		vQueueFrame.hostlistNameField:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.hostlistNameField:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		vQueueFrame.hostlistNameField:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 		vQueueFrame.hostlistNameField:SetMaxLetters(36)
 		vQueueFrame.hostlistNameField:SetBackdrop(vQueueFrameBackdrop)
@@ -857,23 +1000,23 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistNameField:SetWidth(vQueueFrame.hostlist:GetWidth() * 4/5)
 		vQueueFrame.hostlistNameField:SetTextInsets(4, 0, 0, 0)
 		vQueueFrame.hostlistNameField:SetHeight(20)
-		vQueueFrame.hostlistNameField:SetFrameLevel(4)
-		
+		vQueueFrame.hostlistNameField:SetFrameLevel(vQueueFrame.hostlist:GetFrameLevel() +4)
+
 		vQueueFrame.hostlistNameFieldText = CreateFrame("Button", nil, vQueueFrame.hostlistNameField)
 		vQueueFrame.hostlistNameFieldText:ClearAllPoints()
 		vQueueFrame.hostlistNameFieldText:SetPoint("CENTER", vQueueFrame.hostlistNameField, "CENTER", -8, 20)
-		vQueueFrame.hostlistNameFieldText:SetFont("Fonts\\FRIZQT__.TTF", 12)
-		vQueueFrame.hostlistNameFieldText:SetText("Title")
+		vQueueFrame.hostlistNameFieldText:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 12)
+		vQueueFrame.hostlistNameFieldText:SetText(L["Title"])
 		vQueueFrame.hostlistNameFieldText:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostlistNameFieldText:SetPushedTextOffset(0,0)
 		vQueueFrame.hostlistNameFieldText:SetWidth(vQueueFrame.hostlistNameFieldText:GetTextWidth())
 		vQueueFrame.hostlistNameFieldText:SetHeight(vQueueFrame.hostlistNameFieldText:GetTextHeight())
-		vQueueFrame.hostlistNameFieldText:SetFrameLevel(4)
-		
+		vQueueFrame.hostlistNameFieldText:SetFrameLevel(vQueueFrame.hostlistNameField:GetFrameLevel() +4)
+
 		vQueueFrame.hostlistLevelField = CreateFrame("EditBox", nil, vQueueFrame.hostlistNameField )
 		vQueueFrame.hostlistLevelField:SetPoint("TOPLEFT", vQueueFrame.hostlistNameField, "BOTTOMLEFT", 55, -6)
 		vQueueFrame.hostlistLevelField:SetAutoFocus(false)
-		vQueueFrame.hostlistLevelField:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.hostlistLevelField:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		vQueueFrame.hostlistLevelField:SetText(tostring(UnitLevel("player")))
 		vQueueFrame.hostlistLevelField:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 		vQueueFrame.hostlistLevelField:SetMaxLetters(2)
@@ -883,90 +1026,93 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistLevelField:SetNumeric(true)
 		vQueueFrame.hostlistLevelField:SetWidth(20)
 		vQueueFrame.hostlistLevelField:SetHeight(18)
-		vQueueFrame.hostlistLevelField:SetFrameLevel(4)
-		
+		vQueueFrame.hostlistLevelField:SetFrameLevel(vQueueFrame.hostlistNameField:GetFrameLevel() +4)
+		vQueueFrame.hostlistLevelField:SetScript("OnTextChanged", function()
+			vQueue_hostlistNameFieldUpdate()
+		end)
+
 		vQueueFrame.hostlistLevelFieldText = CreateFrame("Button", nil, vQueueFrame.hostlistLevelField)
 		vQueueFrame.hostlistLevelFieldText:ClearAllPoints()
 		vQueueFrame.hostlistLevelFieldText:SetPoint("RIGHT", vQueueFrame.hostlistLevelField, "LEFT", -3, 0)
-		vQueueFrame.hostlistLevelFieldText:SetFont("Fonts\\FRIZQT__.TTF", 8)
-		vQueueFrame.hostlistLevelFieldText:SetText("Minimum lvl")
+		vQueueFrame.hostlistLevelFieldText:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
+		vQueueFrame.hostlistLevelFieldText:SetText(L["Minimum lvl"])
 		vQueueFrame.hostlistLevelFieldText:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostlistLevelFieldText:SetPushedTextOffset(0,0)
 		vQueueFrame.hostlistLevelFieldText:SetWidth(vQueueFrame.hostlistLevelFieldText:GetTextWidth())
 		vQueueFrame.hostlistLevelFieldText:SetHeight(vQueueFrame.hostlistLevelFieldText:GetTextHeight())
-		vQueueFrame.hostlistLevelFieldText:SetFrameLevel(4)
-		
+		vQueueFrame.hostlistLevelFieldText:SetFrameLevel(vQueueFrame.hostlistLevelField:GetFrameLevel() +4)
+
 		vQueueFrame.replyFrame = CreateFrame("Frame", nil, vQueueFrame)
 		vQueueFrame.replyFrame:SetWidth(300)
 		vQueueFrame.replyFrame:SetHeight(150)
 		vQueueFrame.replyFrame:SetPoint("CENTER", vQueueFrame)
 		vQueueFrame.replyFrame:SetBackdrop(vQueueFrameBackdrop)
-		vQueueFrame.replyFrame:SetFrameLevel(4)
+		vQueueFrame.replyFrame:SetFrameLevel(vQueueFrame:GetFrameLevel() +4)
 		vQueueFrame.replyFrame:SetBackdropColor(15/255, 15/255, 15/255, 0.9)
-		
+
 		vQueueFrame.replyFrameToString = vQueueFrame.replyFrame:CreateFontString(nil)
-		vQueueFrame.replyFrameToString:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.replyFrameToString:SetText("To:")
+		vQueueFrame.replyFrameToString:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.replyFrameToString:SetText(L["To:"])
 		vQueueFrame.replyFrameToString:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.replyFrameToString:SetWidth(vQueueFrame.replyFrameToString:GetStringWidth())
 		vQueueFrame.replyFrameToString:SetHeight(8)
 		vQueueFrame.replyFrameToString:SetPoint("TOPLEFT", vQueueFrame.replyFrame, "TOPLEFT", 5, -13)
-		
+
+		vQueueFrame.replyFrameClose = vQueue_newButton(vQueueFrame.replyFrame, 10)
+		vQueueFrame.replyFrameClose:SetPoint("TOPRIGHT", vQueueFrame.replyFrame, "TOPRIGHT", -8, -8)
+		vQueueFrame.replyFrameClose:SetText(CLOSE)
+		vQueueFrame.replyFrameClose:SetWidth(vQueueFrame.replyFrameClose:GetTextWidth()+5)
+		vQueueFrame.replyFrameClose:SetScript("OnClick", function()
+			this:GetParent():Hide()
+		end)
+		vQueueFrame.replyFrame:Hide()
+
+		vQueueFrame.replyFrameSend = vQueue_newButton(vQueueFrame.replyFrame, 10)
+		vQueueFrame.replyFrameSend:SetPoint("BOTTOMRIGHT", vQueueFrame.replyFrame, "BOTTOMRIGHT", -8, 8)
+		vQueueFrame.replyFrameSend:SetText(SEND_LABEL)
+		vQueueFrame.replyFrameSend:SetWidth(vQueueFrame.replyFrameSend:GetTextWidth()+5)
+		vQueueFrame.replyFrameSend:SetScript("OnClick", function()
+			addToSet(chatQueue, vQueueFrame.replyFrameMsg:GetText() .. "-WHISPER-" .. vQueueFrame.replyFrameTo:GetText())
+			this:GetParent():Hide()
+		end)
+
 		vQueueFrame.replyFrameTo = CreateFrame("EditBox", nil, vQueueFrame.replyFrame )
 		vQueueFrame.replyFrameTo:SetPoint("TOPLEFT", vQueueFrame.replyFrame, "TOPLEFT", 25, -8)
 		vQueueFrame.replyFrameTo:SetAutoFocus(false)
-		vQueueFrame.replyFrameTo:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.replyFrameTo:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		vQueueFrame.replyFrameTo:SetText("LFM")
 		vQueueFrame.replyFrameTo:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 		vQueueFrame.replyFrameTo:SetMaxLetters(12)
-		vQueueFrame.replyFrameTo:SetWidth(vQueueFrame.replyFrame:GetWidth() * 4/5 - 10)
+		vQueueFrame.replyFrameTo:SetWidth(vQueueFrame.replyFrame:GetWidth() - vQueueFrame.replyFrameClose:GetWidth() - 32)
 		vQueueFrame.replyFrameTo:SetHeight(20)
 		vQueueFrame.replyFrameTo:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.replyFrameTo:SetBackdropColor(25/255, 25/255, 25/255, 1.0)
 		vQueueFrame.replyFrameTo:SetTextInsets(5, 0, 0, 0)
-		
+
 		vQueueFrame.replyFrameMsg = CreateFrame("EditBox", nil, vQueueFrame.replyFrame )
 		vQueueFrame.replyFrameMsg:SetPoint("TOPLEFT", vQueueFrame.replyFrame, "TOPLEFT", 5, -30)
 		vQueueFrame.replyFrameMsg:SetPoint("BOTTOMRIGHT", vQueueFrame.replyFrame, "BOTTOMRIGHT", -5, 20)
 		vQueueFrame.replyFrameMsg:SetAutoFocus(false)
-		vQueueFrame.replyFrameMsg:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.replyFrameMsg:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		vQueueFrame.replyFrameMsg:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 		vQueueFrame.replyFrameMsg:SetMaxLetters(200)
 		vQueueFrame.replyFrameMsg:SetBackdrop(vQueueFrameBackdrop)
 		vQueueFrame.replyFrameMsg:SetBackdropColor(25/255, 25/255, 25/255, 1.0)
 		vQueueFrame.replyFrameMsg:SetMultiLine(true)
 		vQueueFrame.replyFrameMsg:SetTextInsets(5, 5, 5, 0)
-		
-		vQueueFrame.replyFrameSend = vQueue_newButton(vQueueFrame.replyFrame, 10)
-		vQueueFrame.replyFrameSend:SetPoint("BOTTOMRIGHT", vQueueFrame.replyFrame, "BOTTOMRIGHT", -8, 8)
-		vQueueFrame.replyFrameSend:SetText("Send")
-		vQueueFrame.replyFrameSend:SetWidth(vQueueFrame.replyFrameSend:GetTextWidth()+5)
-		vQueueFrame.replyFrameSend:SetScript("OnClick", function()
-			addToSet(chatQueue, vQueueFrame.replyFrameMsg:GetText() .. "-WHISPER-" .. vQueueFrame.replyFrameTo:GetText())
-			this:GetParent():Hide()
-		end)
-		
-		vQueueFrame.replyFrameClose = vQueue_newButton(vQueueFrame.replyFrame, 10)
-		vQueueFrame.replyFrameClose:SetPoint("TOPRIGHT", vQueueFrame.replyFrame, "TOPRIGHT", -8, -8)
-		vQueueFrame.replyFrameClose:SetText("Close")
-		vQueueFrame.replyFrameClose:SetWidth(vQueueFrame.replyFrameClose:GetTextWidth()+5)
-		vQueueFrame.replyFrameClose:SetScript("OnClick", function()
-			this:GetParent():Hide()
-		end)
-		vQueueFrame.replyFrame:Hide()
-		
+
 		vQueueFrame.optionsFrameTopString = vQueueFrame.optionsFrame:CreateFontString(nil)
-		vQueueFrame.optionsFrameTopString:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.optionsFrameTopString:SetText("vQueue v" .. GetAddOnMetadata("vQueue", "Version") .." Options")
+		vQueueFrame.optionsFrameTopString:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.optionsFrameTopString:SetText("vQueue v" .. GetAddOnMetadata("vQueue", "Version") .." " .. L["Options"])
 		vQueueFrame.optionsFrameTopString:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.optionsFrameTopString:SetWidth(vQueueFrame.optionsFrameTopString:GetStringWidth())
 		vQueueFrame.optionsFrameTopString:SetHeight(8)
 		vQueueFrame.optionsFrameTopString:SetPoint("TOP", vQueueFrame.optionsFrame, "TOP", 0, -7)
-		
+
 		vQueueFrame.filterCheck = CreateFrame("CheckButton", "optionsFilterCheck", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheck:SetWidth(18)
 		vQueueFrame.filterCheck:SetHeight(18)
-		getglobal(vQueueFrame.filterCheck:GetName() .."Text"):SetText("Hide channel messages")
+		getglobal(vQueueFrame.filterCheck:GetName() .."Text"):SetText(L["Hide channel messages"])
 		vQueueFrame.filterCheck:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 5, -15)
 		vQueueFrame.filterCheck:SetChecked(vQueueOptions["filter"])
 		vQueueFrame.filterCheck:SetScript("OnClick", function()
@@ -975,6 +1121,7 @@ function vQueue_OnEvent(event)
 				vQueueFrame.filterCheckTrade:Enable()
 				vQueueFrame.filterCheckLFG:Enable()
 				vQueueFrame.filterCheckWorld:Enable()
+				vQueueFrame.filterCheckchina:Enable()
 				vQueueFrame.filterCheckOnlyFilter:Enable()
 				vQueueOptions["filter"] = true
 			elseif not this:GetChecked() then
@@ -982,16 +1129,17 @@ function vQueue_OnEvent(event)
 				vQueueFrame.filterCheckTrade:Disable()
 				vQueueFrame.filterCheckLFG:Disable()
 				vQueueFrame.filterCheckWorld:Disable()
+				vQueueFrame.filterCheckchina:Disable()
 				vQueueFrame.filterCheckOnlyFilter:Disable()
 				vQueueOptions["filter"] = false
 			end
 		end)
-		
+
 		vQueueFrame.filterCheckGeneral = CreateFrame("CheckButton", "optionsFilterCheckGeneral", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckGeneral:SetWidth(16)
 		vQueueFrame.filterCheckGeneral:SetHeight(16)
-		getglobal(vQueueFrame.filterCheckGeneral:GetName() .."Text"):SetText("General")
-		getglobal(vQueueFrame.filterCheckGeneral:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckGeneral:GetName() .."Text"):SetText(L["General"])
+		getglobal(vQueueFrame.filterCheckGeneral:GetName() .."Text"):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
 		vQueueFrame.filterCheckGeneral:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -30)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckGeneral:Disable() end
 		vQueueFrame.filterCheckGeneral:SetChecked(vQueueOptions["general"])
@@ -1002,12 +1150,12 @@ function vQueue_OnEvent(event)
 				vQueueOptions["general"] = false
 			end
 		end)
-		
+
 		vQueueFrame.filterCheckTrade = CreateFrame("CheckButton", "optionsFilterCheckTrade", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckTrade:SetWidth(16)
 		vQueueFrame.filterCheckTrade:SetHeight(16)
-		getglobal(vQueueFrame.filterCheckTrade:GetName() .."Text"):SetText("Trade")
-		getglobal(vQueueFrame.filterCheckTrade:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckTrade:GetName() .."Text"):SetText(L["Trade"])
+		getglobal(vQueueFrame.filterCheckTrade:GetName() .."Text"):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
 		vQueueFrame.filterCheckTrade:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -42)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckTrade:Disable() end
 		vQueueFrame.filterCheckTrade:SetChecked(vQueueOptions["trade"])
@@ -1018,12 +1166,12 @@ function vQueue_OnEvent(event)
 				vQueueOptions["trade"] = false
 			end
 		end)
-		
+
 		vQueueFrame.filterCheckLFG = CreateFrame("CheckButton", "optionsFilterCheckLFG", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckLFG:SetWidth(16)
 		vQueueFrame.filterCheckLFG:SetHeight(16)
-		getglobal(vQueueFrame.filterCheckLFG:GetName() .."Text"):SetText("Looking For Group")
-		getglobal(vQueueFrame.filterCheckLFG:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckLFG:GetName() .."Text"):SetText(L["Looking For Group"])
+		getglobal(vQueueFrame.filterCheckLFG:GetName() .."Text"):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
 		vQueueFrame.filterCheckLFG:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -54)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckLFG:Disable() end
 		vQueueFrame.filterCheckLFG:SetChecked(vQueueOptions["lfg"])
@@ -1034,12 +1182,12 @@ function vQueue_OnEvent(event)
 				vQueueOptions["lfg"] = false
 			end
 		end)
-		
+
 		vQueueFrame.filterCheckWorld = CreateFrame("CheckButton", "optionsFilterCheckWorld", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckWorld:SetWidth(16)
 		vQueueFrame.filterCheckWorld:SetHeight(16)
 		getglobal(vQueueFrame.filterCheckWorld:GetName() .."Text"):SetText("World")
-		getglobal(vQueueFrame.filterCheckWorld:GetName() .."Text"):SetFont("Fonts\\FRIZQT__.TTF", 8)
+		getglobal(vQueueFrame.filterCheckWorld:GetName() .."Text"):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
 		vQueueFrame.filterCheckWorld:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -66)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckWorld:Disable() end
 		vQueueFrame.filterCheckWorld:SetChecked(vQueueOptions["world"])
@@ -1050,11 +1198,28 @@ function vQueue_OnEvent(event)
 				vQueueOptions["world"] = false
 			end
 		end)
-		
+
+		vQueueFrame.filterCheckchina = CreateFrame("CheckButton", "optionsfilterCheckchina", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
+		vQueueFrame.filterCheckchina:SetWidth(16)
+		vQueueFrame.filterCheckchina:SetHeight(16)
+		getglobal(vQueueFrame.filterCheckchina:GetName() .."Text"):SetText("china")
+		getglobal(vQueueFrame.filterCheckchina:GetName() .."Text"):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
+		vQueueFrame.filterCheckchina:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 60, -66)
+		if not vQueueOptions["filter"] then vQueueFrame.filterCheckchina:Disable() end
+		vQueueFrame.filterCheckchina:SetChecked(vQueueOptions["china"])
+		vQueueFrame.filterCheckchina:SetScript("OnClick", function()
+			if this:GetChecked() then
+				vQueueOptions["china"] = true
+			elseif not this:GetChecked() then
+				vQueueOptions["china"] = false
+			end
+		end)
+
 		vQueueFrame.filterCheckOnlyFilter = CreateFrame("CheckButton", "optionsFilterCheckOnlyLfg", vQueueFrame.optionsFrame, "UICheckButtonTemplate");
 		vQueueFrame.filterCheckOnlyFilter:SetWidth(16)
 		vQueueFrame.filterCheckOnlyFilter:SetHeight(16)
-		getglobal(vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"):SetText("Only hide LFG/LFM messages")
+		getglobal(vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"):SetText(L["Only hide LFG/LFM messages"])
+		getglobal(vQueueFrame.filterCheckOnlyFilter:GetName() .."Text"):SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", s.filterCheckOnlyFilter.fs)
 		vQueueFrame.filterCheckOnlyFilter:SetPoint("TOPLEFT", vQueueFrame.optionsFrame, "TOPLEFT", 15, -80)
 		if not vQueueOptions["filter"] then vQueueFrame.filterCheckOnlyFilter:Disable() end
 		vQueueFrame.filterCheckOnlyFilter:SetChecked(vQueueOptions["onlylfg"])
@@ -1065,18 +1230,18 @@ function vQueue_OnEvent(event)
 				vQueueOptions["onlylfg"] = false
 			end
 		end)
-		
+
 		vQueueFrame.optionsFrameClose = vQueue_newButton(vQueueFrame.optionsFrame, 10)
 		vQueueFrame.optionsFrameClose:SetPoint("BOTTOM", vQueueFrame.optionsFrame, "BOTTOM", 0, 5)
-		vQueueFrame.optionsFrameClose:SetText("Save")
+		vQueueFrame.optionsFrameClose:SetText(SAVE)
 		vQueueFrame.optionsFrameClose:SetWidth(vQueueFrame.optionsFrameClose:GetTextWidth()+10)
 		vQueueFrame.optionsFrameClose:SetScript("OnClick", function()
 			this:GetParent():Hide()
 		end)
-		
+
 		vQueueFrame.optionsFrameFix = vQueue_newButton(vQueueFrame.optionsFrame, 10)
 		vQueueFrame.optionsFrameFix:SetPoint("TOPLEFT", vQueueFrame.filterCheckOnlyFilter, "BOTTOMLEFT", 0, 0)
-		vQueueFrame.optionsFrameFix:SetText("Fix channel order")
+		vQueueFrame.optionsFrameFix:SetText(L["Fix channel order"])
 		vQueueFrame.optionsFrameFix:SetWidth(vQueueFrame.optionsFrameFix:GetTextWidth()+15)
 		vQueueFrame.optionsFrameFix:SetScript("OnClick", function()
 			LeaveChannelByName(channelName)
@@ -1090,13 +1255,38 @@ function vQueue_OnEvent(event)
 				end
 			end
 		end)
-		
+
+		vQueueFrame.frameScale = CreateFrame("Slider", "optionsFrameScale", vQueueFrame.optionsFrame, "OptionsSliderTemplate");
+		vQueueFrame.frameScale:SetWidth(120)
+		vQueueFrame.frameScale:SetHeight(16)
+		vQueueFrame.frameScale:SetPoint("TOPLEFT", vQueueFrame.optionsFrameFix, "BOTTOMLEFT", 0, -7)
+		vQueueFrame.frameScale:SetMinMaxValues(0.1,3.0)
+		vQueueFrame.frameScale:SetValue(vQueueOptions.frameScale)
+		vQueueFrame.frameScale:SetValueStep(0.1)
+		getglobal("optionsFrameScaleText"):SetText(vQueueOptions.frameScale)
+		getglobal("optionsFrameScaleLow"):SetText("0.1")
+		getglobal("optionsFrameScaleHigh"):SetText("3.0")
+		vQueueFrame.frameScale:SetScript("OnValueChanged", function()
+			vQueueOptions.frameScale =tonumber(string.format("%.2f", this:GetValue()))
+			getglobal(this:GetName().."Text"):SetText(vQueueOptions.frameScale)
+
+
+		end)
+
+		vQueueFrame.applyframeScale = vQueue_newButton(vQueueFrame.optionsFrame, 10)
+		vQueueFrame.applyframeScale:SetPoint("LEFT", vQueueFrame.frameScale, "RIGHT", 5, 0)
+		vQueueFrame.applyframeScale:SetText(L["Apply"])
+		vQueueFrame.applyframeScale:SetWidth(vQueueFrame.applyframeScale:GetTextWidth()+15)
+		vQueueFrame.applyframeScale:SetScript("OnClick", function()
+			vQueueFrame:SetScale(vQueueOptions.frameScale)
+		end)
+
 		--Role Icons for group creation
 		vQueueFrame.hostlistHostHealer = CreateFrame("Button", "vQueueInfoButton", vQueueFrame.hostlistNameField)
 		vQueueFrame.hostlistHostHealer:SetWidth(32)
 		vQueueFrame.hostlistHostHealer:SetHeight(32)
 		vQueueFrame.hostlistHostHealer:SetPoint("TOPRIGHT", vQueueFrame.hostlistNameField, "BOTTOMRIGHT", -32, -5)
-		vQueueFrame.hostlistHostHealer:SetFrameLevel(4)
+		vQueueFrame.hostlistHostHealer:SetFrameLevel(vQueueFrame.hostlistNameField:GetFrameLevel() +4)
 		vQueueFrame.hostlistHostHealerTex = vQueueFrame.hostlistHostHealer:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.hostlistHostHealerTex:SetAllPoints()
 		vQueueFrame.hostlistHostHealerTex:SetTexture("Interface\\AddOns\\vQueue\\media\\Healer")
@@ -1114,6 +1304,7 @@ function vQueue_OnEvent(event)
 			else
 				vQueueFrame.hostlistHostHealCheck:Hide()
 			end
+			vQueue_hostlistNameFieldUpdate()
 		end)
 		vQueueFrame.hostlistHostHealer:SetScript("OnEnter", function()
 			vQueueFrame.hostlistHostHealerTex:SetVertexColor(1, 1, 0)
@@ -1121,11 +1312,11 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHostHealer:SetScript("OnLeave", function()
 			vQueueFrame.hostlistHostHealerTex:SetVertexColor(1, 1, 1)
 		end)
-		
+
 		vQueueFrame.hostlistHostDamage = CreateFrame("Button", "vQueueInfoButton", vQueueFrame.hostlistNameField)
 		vQueueFrame.hostlistHostDamage:SetWidth(32)
 		vQueueFrame.hostlistHostDamage:SetHeight(32)
-		vQueueFrame.hostlistHostDamage:SetFrameLevel(4)
+		vQueueFrame.hostlistHostDamage:SetFrameLevel(vQueueFrame.hostlistNameField:GetFrameLevel() +4)
 		vQueueFrame.hostlistHostDamage:SetPoint("TOPRIGHT", vQueueFrame.hostlistNameField, "BOTTOMRIGHT", 0, -5)
 		vQueueFrame.hostlistHostDamageTex = vQueueFrame.hostlistHostDamage:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.hostlistHostDamageTex:SetAllPoints()
@@ -1144,6 +1335,7 @@ function vQueue_OnEvent(event)
 			else
 				vQueueFrame.hostlistHostDamageCheck:Hide()
 			end
+			vQueue_hostlistNameFieldUpdate()
 		end)
 		vQueueFrame.hostlistHostDamage:SetScript("OnEnter", function()
 			vQueueFrame.hostlistHostDamageTex:SetVertexColor(1, 1, 0)
@@ -1151,11 +1343,11 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHostDamage:SetScript("OnLeave", function()
 			vQueueFrame.hostlistHostDamageTex:SetVertexColor(1, 1, 1)
 		end)
-		
+
 		vQueueFrame.hostlistHostTank = CreateFrame("Button", "vQueueInfoButton", vQueueFrame.hostlistNameField)
 		vQueueFrame.hostlistHostTank:SetWidth(32)
 		vQueueFrame.hostlistHostTank:SetHeight(32)
-		vQueueFrame.hostlistHostTank:SetFrameLevel(4)
+		vQueueFrame.hostlistHostTank:SetFrameLevel(vQueueFrame.hostlistNameField:GetFrameLevel() +4)
 		vQueueFrame.hostlistHostTank:SetPoint("TOPRIGHT", vQueueFrame.hostlistNameField, "BOTTOMRIGHT", -64, -5)
 		vQueueFrame.hostlistHostTankTex = vQueueFrame.hostlistHostTank:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.hostlistHostTankTex:SetAllPoints()
@@ -1174,6 +1366,7 @@ function vQueue_OnEvent(event)
 			else
 				vQueueFrame.hostlistHostTankCheck:Hide()
 			end
+			vQueue_hostlistNameFieldUpdate()
 		end)
 		vQueueFrame.hostlistHostTank:SetScript("OnEnter", function()
 			vQueueFrame.hostlistHostTankTex:SetVertexColor(1, 1, 0)
@@ -1181,24 +1374,24 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHostTank:SetScript("OnLeave", function()
 			vQueueFrame.hostlistHostTankTex:SetVertexColor(1, 1, 1)
 		end)
-		
+
 		vQueueFrame.hostlistNeededRolesText = CreateFrame("Button", nil, vQueueFrame.hostlistHostTank )
 		vQueueFrame.hostlistNeededRolesText:SetPoint("RIGHT", vQueueFrame.hostlistHostTank , "LEFT", 0, 2)
-		vQueueFrame.hostlistNeededRolesText:SetFont("Fonts\\FRIZQT__.TTF", 8)
-		vQueueFrame.hostlistNeededRolesText:SetText("Needed roles")
+		vQueueFrame.hostlistNeededRolesText:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
+		vQueueFrame.hostlistNeededRolesText:SetText(L["Needed roles"])
 		vQueueFrame.hostlistNeededRolesText:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.hostlistNeededRolesText:SetPushedTextOffset(0,0)
 		vQueueFrame.hostlistNeededRolesText:SetWidth(vQueueFrame.hostlistNeededRolesText:GetTextWidth())
 		vQueueFrame.hostlistNeededRolesText:SetHeight(vQueueFrame.hostlistNeededRolesText:GetTextHeight())
 		---------------------------------------------------
-		
+
 		vQueueFrame.hostlistCancelButton = vQueue_newButton(vQueueFrame.hostlist, 10)
 		vQueueFrame.hostlistCancelButton:SetPoint("CENTER", vQueueFrame.hostlist, "CENTER", -8, -130)
-		vQueueFrame.hostlistCancelButton:SetText("Cancel")
+		vQueueFrame.hostlistCancelButton:SetText(CANCEL)
 		vQueueFrame.hostlistCancelButton:SetWidth(vQueueFrame.hostlistCancelButton:GetTextWidth()+20)
-		vQueueFrame.hostlistCancelButton:SetFrameLevel(4)
+		vQueueFrame.hostlistCancelButton:SetFrameLevel(vQueueFrame.hostlist:GetFrameLevel() +4)
 		vQueueFrame.hostlistCancelButton:SetScript("OnClick", function()
-			isWaitListShown = false
+			vQueueDB.isWaitListShown = false
 			if selectedQuery == "waitlist" then selectedQuery = hostedCategory end
 			vQueue_ShowGroups(selectedQuery, selectedQuery)
 			vQueueFrame.hostTitleFindName:Show()
@@ -1213,12 +1406,12 @@ function vQueue_OnEvent(event)
 			this:Hide()
 		end)
 		vQueueFrame.hostlistCancelButton:Hide()
-		
+
 		vQueueFrame.hostlistCreateButton = vQueue_newButton(vQueueFrame.hostlist, 14)
 		vQueueFrame.hostlistCreateButton:SetPoint("CENTER", vQueueFrame.hostlist, "CENTER", -8, -100)
-		vQueueFrame.hostlistCreateButton:SetText("Create group")
+		vQueueFrame.hostlistCreateButton:SetText(L["Create group"])
 		vQueueFrame.hostlistCreateButton:SetWidth(vQueueFrame.hostlistCreateButton:GetTextWidth()+30)
-		vQueueFrame.hostlistCreateButton:SetFrameLevel(4)
+		vQueueFrame.hostlistCreateButton:SetFrameLevel(vQueueFrame.hostlist:GetFrameLevel() +4)
 		vQueueFrame.hostlistCreateButton:SetScript("OnClick", function()
 			if vQueueFrame.hostlistNameField:GetText() ~= "" and vQueueFrame.hostlistLevelField:GetText() ~= "" then
 				if tonumber(vQueueFrame.hostlistLevelField:GetText()) < 1 then vQueueFrame.hostlistLevelField:SetText("1") end
@@ -1262,13 +1455,13 @@ function vQueue_OnEvent(event)
 				vQueueFrame.topsectionHostName:Show()
 				vQueueFrame.hostlistBotShadow:SetHeight(40)
 				if tablelength(groups[selectedQuery]) > 16 then vQueueFrame.hostlistBotShadow:Show() else vQueueFrame.hostlistBotShadow:Hide() end
-				if isHost then return end
+				if vQueueDB.isHost then return end
 				vQueue_SlashCommandHandler( "host " .. selectedQuery )
 			end
 		end)
-		
+
 		--scrollbarhost
-		scrollbar = CreateFrame("Slider", nil, vQueueFrame.hostlist, "UIPanelScrollBarTemplate") 
+		scrollbar = CreateFrame("Slider", nil, vQueueFrame.hostlist, "UIPanelScrollBarTemplate")
 		scrollbar:SetMinMaxValues(1, 1)
 		scrollbar:SetValueStep(1)
 		scrollbar.scrollStep = 1
@@ -1283,9 +1476,9 @@ function vQueue_OnEvent(event)
 			vQueue_UpdateHostScroll(arg1)
 		end)
 		scrollbar:Hide()
-		
+
 		--scrollbarcategory
-		scrollbarCat = CreateFrame("Slider", nil, vQueueFrame.catList, "UIPanelScrollBarTemplate") 
+		scrollbarCat = CreateFrame("Slider", nil, vQueueFrame.catList, "UIPanelScrollBarTemplate")
 		scrollbarCat:SetMinMaxValues(1, 10)
 		scrollbarCat:SetValueStep(1)
 		scrollbarCat.scrollStep = 1
@@ -1300,148 +1493,158 @@ function vQueue_OnEvent(event)
 			vQueue_UpdateCatScroll(arg1)
 		end)
 		scrollbarCat:Hide()
-		
-		
+
+
 		vQueueFrame.title = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
 		vQueueFrame.title:ClearAllPoints()
 		vQueueFrame.title:SetPoint("CENTER", vQueueFrame.hostlist, "TOP", 0 , 6)
-		vQueueFrame.title:SetFont("Fonts\\FRIZQT__.TTF", 10)
+		vQueueFrame.title:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		vQueueFrame.title:SetText("vQueue")
 		vQueueFrame.title:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.title:SetPushedTextOffset(0,0)
 		vQueueFrame.title:SetWidth(vQueueFrame.title:GetTextWidth())
 		vQueueFrame.title:SetHeight(20)
-		
+
 		vQueueFrame.titleCat = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
 		vQueueFrame.titleCat:ClearAllPoints()
 		vQueueFrame.titleCat:SetPoint("CENTER", vQueueFrame.catList, "TOP", 0 , 6)
-		vQueueFrame.titleCat:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		vQueueFrame.titleCat:SetText("Categories")
+		vQueueFrame.titleCat:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		vQueueFrame.titleCat:SetText(L["Categories"])
 		vQueueFrame.titleCat:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.titleCat:SetPushedTextOffset(0,0)
 		vQueueFrame.titleCat:SetWidth(20)
 		vQueueFrame.titleCat:SetHeight(20)
-		
-		
-		DEFAULT_CHAT_FRAME:AddMessage("Loaded " .. arg1)
-		minimapButton = CreateFrame("Button", "vQueueMap", Minimap)
-		minimapButton:SetFrameStrata("HIGH")
-		minimapButton:SetWidth(32)
-		minimapButton:SetHeight(32)
-		minimapButton:ClearAllPoints()
-		minimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",54-(75*cos(MinimapPos)),(75*sin(MinimapPos))-55) 
-		minimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
-		minimapButton:RegisterForDrag("RightButton")
-		minimapButton.texture = minimapButton:CreateTexture(nil, "BUTTON")
-		minimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
-		minimapButton.texture:SetPoint("CENTER", minimapButton)
-		minimapButton.texture:SetWidth(20)
-		minimapButton.texture:SetHeight(20)
-		
-		minimapButton.border = minimapButton:CreateTexture(nil, "BORDER")
-		minimapButton.border:SetTexture("Interface\\MINIMAP\\MiniMap-TrackingBorder")
-		minimapButton.border:SetPoint("TOPLEFT", minimapButton.texture, -6, 5)
-		minimapButton.border:SetWidth(52)
-		minimapButton.border:SetHeight(52)
-		
-		minimapButton.notifyText = minimapButton:CreateTexture(nil, "OVERLAY")
-		minimapButton.notifyText:SetTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight")
-		minimapButton.notifyText:SetBlendMode("ADD")
-		minimapButton.notifyText:SetAllPoints()
-		minimapButton.notifyText:Hide()
-		minimapButton:SetScript("OnMouseDown", function()
-			point, relativeTo, relativePoint, xOffset, yOffset = minimapButton.texture:GetPoint(1)
-			minimapButton.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
+
+
+		DEFAULT_CHAT_FRAME:AddMessage(L["Loaded "] .. arg1)
+		vQueueminimapButton = CreateFrame("Button", "vQueueMap", Minimap)
+		vQueueminimapButton:SetFrameStrata("HIGH")
+		vQueueminimapButton:SetWidth(32)
+		vQueueminimapButton:SetHeight(32)
+		vQueueminimapButton:ClearAllPoints()
+		vQueueminimapButton:SetPoint("TOPLEFT", Minimap,"TOPLEFT",MinimapPos.x,MinimapPos.y)
+
+		vQueueminimapButton:SetHighlightTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight", "ADD")
+		vQueueminimapButton:RegisterForDrag("RightButton")
+		vQueueminimapButton.texture = vQueueminimapButton:CreateTexture(nil, "BUTTON")
+		vQueueminimapButton.texture:SetTexture("Interface\\AddOns\\vQueue\\media\\icon")
+		vQueueminimapButton.texture:SetPoint("CENTER", vQueueminimapButton)
+		vQueueminimapButton.texture:SetWidth(20)
+		vQueueminimapButton.texture:SetHeight(20)
+
+		vQueueminimapButton.border = vQueueminimapButton:CreateTexture(nil, "BORDER")
+		vQueueminimapButton.border:SetTexture("Interface\\MINIMAP\\MiniMap-TrackingBorder")
+		vQueueminimapButton.border:SetPoint("TOPLEFT", vQueueminimapButton.texture, -6, 5)
+		vQueueminimapButton.border:SetWidth(52)
+		vQueueminimapButton.border:SetHeight(52)
+
+		vQueueminimapButton.notifyText = vQueueminimapButton:CreateTexture(nil, "OVERLAY")
+		vQueueminimapButton.notifyText:SetTexture("Interface\\MINIMAP\\UI-Minimap-ZoomButton-Highlight")
+		vQueueminimapButton.notifyText:SetBlendMode("ADD")
+		vQueueminimapButton.notifyText:SetAllPoints()
+		vQueueminimapButton.notifyText:Hide()
+		vQueueminimapButton:SetScript("OnMouseDown", function()
+			point, relativeTo, relativePoint, xOffset, yOffset = this.texture:GetPoint(1)
+			this.texture:SetPoint(point, relativeTo, relativePoint, xOffset + 2, yOffset - 2)
 		end);
-		minimapButton:SetScript("OnLeave", function(self, button)
+		vQueueminimapButton:SetScript("OnLeave", function(self, button)
 			MinimapTool:Hide()
-			minimapButton.notifyText:Hide()
-			minimapButton.texture:SetPoint("CENTER", minimapButton)
+			this.notifyText:Hide()
+			this.texture:SetPoint("CENTER", vQueueminimapButton,0,0)
 		end);
-		minimapButton:SetScript("OnMouseUp", function()
+		vQueueminimapButton:SetScript("OnMouseUp", function()
 			if arg1 == "LeftButton" then
-				if vQueueFrameShown then 
-					vQueueFrame:Hide() 
+				if vQueueDB.FrameShown then
+					vQueueFrame:Hide()
 					vQueueFrame.catList:Hide()
 					vQueueFrame.hostlist:Hide()
-					vQueueFrameShown = false
+					vQueueDB.FrameShown = false
 				else
-					vQueueFrame:Show() 
+					vQueueFrame:Show()
 					vQueueFrame.catList:Show()
 					vQueueFrame.hostlist:Show()
-					vQueueFrameShown = true
+					vQueueDB.FrameShown = true
 				end
 			end
-			minimapButton.texture:SetPoint("CENTER", minimapButton)
+			this.texture:SetPoint("CENTER", vQueueminimapButton)
 		end);
-		minimapButton:SetScript("OnDragStart", function()
+		vQueueminimapButton:SetScript("OnDragStart", function()
 			miniDrag = true
 		end)
-		minimapButton:SetScript("OnDragStop", function()
+		vQueueminimapButton:SetScript("OnDragStop", function()
 			miniDrag = false
 		end)
-		minimapButton:SetScript("OnUpdate", function()
+		vQueueminimapButton:SetScript("OnUpdate", function()
 			if miniDrag then
-				    local xpos,ypos = GetCursorPosition() 
-					local xmin,ymin = Minimap:GetLeft(), Minimap:GetBottom() 
-
-					xpos = xmin-xpos/UIParent:GetScale()+70 
-					ypos = ypos/UIParent:GetScale()-ymin-70 
-					
-					MinimapPos = math.deg(math.atan2(ypos,xpos))
-					if (MinimapPos < 0) then
-						MinimapPos = MinimapPos + 360
-					end
-					this:SetPoint("TOPLEFT", Minimap,"TOPLEFT",54-(75*cos(MinimapPos)),(75*sin(MinimapPos))-55) 
+				local xpos,ypos = GetCursorPosition();
+				local xmin,ymin,xm,ym = Minimap:GetLeft(), Minimap:GetBottom(), Minimap:GetRight(), Minimap:GetTop();
+				local scale = Minimap:GetEffectiveScale();
+				local xdelta, ydelta = (xm - xmin + 5)/2*scale, (ym - ymin + 5) /2 * scale;
+				xpos = xmin*scale-xpos+xdelta;
+				ypos = ypos-ymin*scale-ydelta;
+				local angle = math.deg(math.atan2(ypos,xpos));
+				local	x,y =0,0;
+				if (Squeenix or (simpleMinimap_Skins and simpleMinimap_Skins:GetShape() == "square")
+							or (pfUI and pfUI_config["disabled"]["minimap"] ~= "1")) then
+					x = math.max(-xdelta, math.min((xdelta*1.5) * cos(angle), xdelta))
+					y = math.max(-ydelta, math.min((ydelta*1.5) * sin(angle), ydelta))
+				else
+					x= cos(angle)*xdelta
+					y= sin(angle)*ydelta
+				end
+				local sc= this:GetEffectiveScale()
+				MinimapPos.x = (xdelta-x)/sc - 17
+				MinimapPos.y = (y-ydelta)/sc + 17
+				this:SetPoint("TOPLEFT", Minimap, "TOPLEFT", MinimapPos.x , MinimapPos.y);
 			end
 		end)
 		CreateFrame( "GameTooltip", "MinimapTool", nil, "GameTooltipTemplate" ); -- Tooltip name cannot be nil
-		minimapButton:SetScript("OnEnter", function()
-			if isHost then
+		vQueueminimapButton:SetScript("OnEnter", function()
+			if vQueueDB.isHost then -- layt
 				MinimapTool:SetOwner( this, "ANCHOR_CURSOR" );
-				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. " player(s) in your wait list.", 1, 1, 1, 1)
+				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. L[" player(s) in your wait list."], 1, 1, 1, 1)
 				MinimapTool:Show()
 			end
 		end)
 		MinimapTool:SetScript("OnUpdate", function()
 			if this:IsShown() then
 				this:Hide()
-				MinimapTool:SetOwner( minimapButton, "ANCHOR_CURSOR" );
-				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. " player(s) in your wait list.", 1, 1, 1, 1)
+				MinimapTool:SetOwner( vQueueminimapButton, "ANCHOR_CURSOR" );
+				MinimapTool:AddLine(tablelength(groups["waitlist"]) .. L[" player(s) in your wait list."], 1, 1, 1, 1)
 				MinimapTool:Show()
 			end
 		end)
-		
-		
+
+
 		vQueueFrame.topsectiontitle = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlistTopSection)
 		vQueueFrame.topsectiontitle:ClearAllPoints()
 		vQueueFrame.topsectiontitle:SetPoint("LEFT", vQueueFrame.hostlistTopSection, "LEFT", 5, vQueueFrame.hostlistTopSection:GetHeight() * 1/6)
-		vQueueFrame.topsectiontitle:SetFont("Fonts\\MORPHEUS.ttf", 24, "OUTLINE")
-		vQueueFrame.topsectiontitle:SetText("<-- Select a catergory")
+		vQueueFrame.topsectiontitle:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 24, "OUTLINE")
+		vQueueFrame.topsectiontitle:SetText(L["<-- Select a category"])
 		vQueueFrame.topsectiontitle:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 		vQueueFrame.topsectiontitle:EnableMouse(false)
-		vQueueFrame.topsectiontitle:SetFrameLevel(3)
+		vQueueFrame.topsectiontitle:SetFrameLevel(vQueueFrame.hostlistTopSection:GetFrameLevel() +3)
 		vQueueFrame.topsectiontitle:SetWidth(vQueueFrame.topsectiontitle:GetTextWidth())
 		vQueueFrame.topsectiontitle:SetHeight(vQueueFrame.topsectiontitle:GetTextHeight())
-		
+
 		vQueueFrame.topsectionHostName = CreateFrame("Button", "vQueueButton", vQueueFrame.topsectiontitle)
 		vQueueFrame.topsectionHostName:SetPoint("TOPLEFT", vQueueFrame.topsectiontitle, "BOTTOMLEFT", 0, -3)
-		vQueueFrame.topsectionHostName:SetFont("Fonts\\FRIZQT__.TTF", 8, "OUTLINE")
+		vQueueFrame.topsectionHostName:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8, "OUTLINE")
 		vQueueFrame.topsectionHostName:SetText("")
 		vQueueFrame.topsectionHostName:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.topsectionHostName:EnableMouse(false)
 		vQueueFrame.topsectionHostName:SetWidth(vQueueFrame.topsectionHostName:GetTextWidth())
 		vQueueFrame.topsectionHostName:SetHeight(vQueueFrame.topsectionHostName:GetTextHeight())
 		vQueueFrame.topsectionHostName:Hide()
-		
+
 		vQueueFrame.topsectionMinLvl = vQueueFrame.topsectionHostName:CreateFontString(nil, "ARTWORK")
 		vQueueFrame.topsectionMinLvl:SetPoint("TOPLEFT", vQueueFrame.topsectionHostName, "BOTTOMLEFT", -2, -3)
-		vQueueFrame.topsectionMinLvl:SetFont("Fonts\\FRIZQT__.TTF", 8, "OUTLINE")
+		vQueueFrame.topsectionMinLvl:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8, "OUTLINE")
 		vQueueFrame.topsectionMinLvl:SetText("17+")
 		vQueueFrame.topsectionMinLvl:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		vQueueFrame.topsectionMinLvl:SetWidth(vQueueFrame.topsectionMinLvl:GetStringWidth())
 		vQueueFrame.topsectionMinLvl:SetHeight(10)
-		
+
 		vQueueFrame.topsectionHostHeal = vQueueFrame.topsectionHostName:CreateTexture(nil, "ARTWORK")
 		vQueueFrame.topsectionHostHeal:SetPoint("LEFT", vQueueFrame.topsectionMinLvl, "RIGHT", 12, 0)
 		vQueueFrame.topsectionHostHeal:SetTexture("Interface\\AddOns\\vQueue\\media\\Healer")
@@ -1457,7 +1660,7 @@ function vQueue_OnEvent(event)
 		vQueueFrame.topsectionHostTank:SetTexture("Interface\\AddOns\\vQueue\\media\\Tank")
 		vQueueFrame.topsectionHostTank:SetWidth(12)
 		vQueueFrame.topsectionHostTank:SetHeight(12)
-		
+
 		vQueueFrame.catListHighlight = CreateFrame("Frame", nil, nil)
 		vQueueFrame.catListHighlight:SetPoint("CENTER", vQueueFrame.catList, "CENTER", 0, 2)
 		vQueueFrame.catListHighlight:SetWidth(vQueueFrame.catList:GetWidth()-4)
@@ -1467,14 +1670,15 @@ function vQueue_OnEvent(event)
 		vQueueFrame.catListHighlightTex:SetGradientAlpha("HORIZONTAL", 1, 1, 0, 0.5, 1, 1, 0, 0)
 		vQueueFrame.catListHighlightTex:SetAllPoints()
 		vQueueFrame.catListHighlight:Hide()
-		
-		vQueue_createCategories("Dungeons")
-		vQueue_createCategories("Battlegrounds")
-		vQueue_createCategories("Raids")
-		vQueue_createCategories("Quest Groups")
-		vQueue_createCategories("Miscellaneous")
 
-		minimapButton:Show()
+		vQueue_createCategories(L["Dungeons"])
+		vQueue_createCategories(L["Battlegrounds"])
+		vQueue_createCategories(L["Raids"])
+		vQueue_createCategories(L["Quest Groups"])
+		vQueue_createCategories(L["Miscellaneous"])
+
+		vQueueminimapButton:Show()
+		vQueueFrame:SetScale(vQueueOptions.frameScale)
 		vQueueFrame:Hide()
 		vQueueFrame.catList:Hide()
 		vQueueFrame.hostlist:Hide()
@@ -1488,10 +1692,13 @@ function vQueue_OnEvent(event)
 		vQueueFrame.hostlistHostButton:Hide()
 	end
 	if event == "CHAT_MSG_CHANNEL" then
-		if string.lower(arg9) ~= string.lower(channelName) then
+		if vQ_IsInArray(vQueueDB.bannedLeaders,arg2) then
+			return
+		end
+		if string.lower(arg9) ~= string.lower(channelName) then --this string is scanning chats in realtime
 			local puncString = filterPunctuation(arg1)
 			for kLfm, vLfm in pairs(getglobal("LFMARGS")) do
-				if Wholefind(puncString, vLfm) > 0 then
+				if Wholefind(puncString, vLfm) >= 0 then
 					local usedthis = false
 					for kCat, kVal in pairs(getglobal("CATARGS")) do
 						for kkCat, kkVal in pairs(kVal) do
@@ -1531,24 +1738,31 @@ function vQueue_OnEvent(event)
 									end
 								end
 								leaderMessages[arg2] = strippedStr .. ":" .. kCat .. ":" .. tostring(GetTime())
-								if kCat ~= "dm" then
-									vQueue_addToGroup(kCat, "(Mouseover to see chat message)" .. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
-								end
-								if kCat == 'dm' then
-									if not setContains(whoRequestList, arg2) then addToSet(whoRequestList, arg2) end
+								vQueue_addToGroup(kCat, strippedStr.. ":" .. arg2 .. ":" .. getglobal("MINLVLS")[kCat] .. ":" .. "?" .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
+
+
+								if string.find(notifyForDungeon,kCat) then
+									if (selectedRole == damageRole ) or (selectedRole == healerRole) or (selectedRole == tankRole) then
+										vQueueFrame.replyFrameTo:SetText(arg2)
+										vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. vQueueDB.class)
+										vQueueFrame.replyFrame:Show()
+										if not (vQueueDB.FrameShown or vQueueDB.inCombat) then
+											vQueueFrame:Show()
+											vQueueFrame.catList:Show()
+											vQueueFrame.hostlist:Show()
+											vQueueDB.FrameShown = true
+										end
+									end
+									DEFAULT_CHAT_FRAME:AddMessage(L["Someone is looking for "] .. kCat)
 								end
 								refreshCatList(kCat)
 								break
 							end
 						end
 					end
-					--if not usedthis then 
-						--DEFAULT_CHAT_FRAME:AddMessage("Added: " .. puncString)
-						--table.insert(notCaught, tablelength(notCaught), puncString)
-					--end
 				end
 			end
-			if isHost then
+			if vQueueDB.isHost then
 			for kLfm, vLfm in pairs(getglobal("LFGARGS")) do
 				if Wholefind(puncString, vLfm) > 0 then
 					for kCat, kVal in pairs(getglobal("CATARGS")) do
@@ -1556,7 +1770,7 @@ function vQueue_OnEvent(event)
 							for groupindex = 1,MAX_PARTY_MEMBERS do
 								if UnitName("party" .. tostring(groupindex)) == arg2 then return end
 							end
-							if Wholefind(puncString, kkVal) > 0 and isHost and hostedCategory == kCat then
+							if Wholefind(puncString, kkVal) > 0 and vQueueDB.isHost and hostedCategory == kCat then
 								local exists = false
 								local playerRole = ""
 								for kHeal, vHeal in pairs(getglobal("ROLEARGS")["Healer"]) do
@@ -1601,7 +1815,7 @@ function vQueue_OnEvent(event)
 			if arg1 ~= nil then
 				vQueueArgs = split(arg1, "\%s")
 			end
-			
+
 			if vQueueArgs[1] == "vqgroup" and vQueueArgs[2] ~= nil then
 				local name = split(arg1, "\:")
 				local healerRole = ""
@@ -1616,10 +1830,10 @@ function vQueue_OnEvent(event)
 				if vQueueArgs[7] == "true" then
 				 tankRole = "Tank"
 				end
-				
+
 				if tonumber(vQueueArgs[8]) == 0 and setContains(waitingList, arg2) then removeFromSet(waitingList, arg2)
 				elseif tonumber(vQueueArgs[8]) == 1 and not setContains(waitingList, arg2) then addToSet(waitingList, arg2) end
-				
+
 				local strippedStr = ""
 				for i=1, string.len(name[2]) do
 					local add = true
@@ -1631,6 +1845,8 @@ function vQueue_OnEvent(event)
 					end
 				end
 				leaderMessages[arg2] = strippedStr .. ":" .. vQueueArgs[2] .. ":" .. GetTime()
+
+				--if vQueueArgs[2] == "dm" then vQueueArgs[2]="dem" end -- OLD Version
 				
 				vQueue_addToGroup(vQueueArgs[2], strippedStr .. ":" .. arg2 .. ":" .. vQueueArgs[3] .. ":" .. vQueueArgs[4] .. ":" .. healerRole .. ":" .. damageRole .. ":" .. tankRole)
 				refreshCatList(vQueueArgs[2])
@@ -1639,7 +1855,7 @@ function vQueue_OnEvent(event)
 	end
 	
 	if event == "WHO_LIST_UPDATE" then
-		vQueue_WhoSorting()
+		--vQueue_WhoSorting()
 		
 		if tablelength(whoRequestList) > 0 then
 			for i=1, GetNumWhoResults() do
@@ -1670,7 +1886,7 @@ function vQueue_OnEvent(event)
 		end
 		if next(args) == nil then return end
 		-- Group request info from players
-		if args[1] == "vqrequest" and isHost then
+		if args[1] == "vqrequest" and vQueueDB.isHost then
 			for groupindex = 1,MAX_PARTY_MEMBERS do
 				if UnitName("party" .. tostring(groupindex)) == arg2 then return end
 			end
@@ -1681,9 +1897,9 @@ function vQueue_OnEvent(event)
 			for key, value in pairs(groups) do
 				if groups[key][arg2] ~= nil then
 					if args[1] == "vqaccept" then
-						DEFAULT_CHAT_FRAME:AddMessage("Your application to " .. arg2 .. "'s group(" .. key .. ") has been accepted.", 0.2, 1.0, 0.2)
+						DEFAULT_CHAT_FRAME:AddMessage(L["Your application to "] .. arg2 .. L["'s group("] .. key .. L[") has been accepted."], 0.2, 1.0, 0.2)
 					elseif args[1] == "vqdecline" then
-						DEFAULT_CHAT_FRAME:AddMessage("Your application to " .. arg2 .. "'s group(" .. key .. ") has been declined.", 1.0, 0.2, 0.2)
+						DEFAULT_CHAT_FRAME:AddMessage(L["Your application to "] .. arg2 .. L["'s group("] .. key .. L[") has been declined."], 1.0, 0.2, 0.2)
 					end
 					removeFromSet(waitingList, arg2)
 					groups[key][arg2]:Hide()
@@ -1693,19 +1909,22 @@ function vQueue_OnEvent(event)
 			end
 		end	
 	end
+	if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_REGEN_DISABLED" then
+		vQueueDB.inCombat = event == "PLAYER_REGEN_DISABLED"
+	end
 end
 
 function vQueue_updateCatColors()
 	local curCat = ""
 	for kk, vv in pairs(catListButtons) do
 		if categories[vv:GetText()] ~= nil then curCat = vv:GetText() end
-		if categories[vv:GetText()] == nil and curCat ~= "Battlegrounds" and curCat ~= "Miscellaneous" then
+		if categories[vv:GetText()] == nil and curCat ~= L["Battlegrounds"] and curCat ~= L["Miscellaneous"] then
 			local args = {}
 			for k, v in pairs(categories) do
 				for i, item in v do
 					if type(item) == "string" then
 						local tArgs = split(item, "\:")
-						if tArgs[1] == split(vv:GetText(), "%(")[1] then 
+						if tArgs[1] == trim(split(vv:GetText(), "%[")[1]) then 
 							args = tArgs
 							break
 						end
@@ -1720,12 +1939,13 @@ end
 
 function vQueue_createCategories(textKey)
 	newCatButton = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
-	newCatButton:SetFont("Fonts\\FRIZQT__.TTF", 10)
+	newCatButton:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 	newCatButton:SetText(textKey)
 	newCatButton:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 	newCatButton:SetWidth(newCatButton:GetTextWidth())
 	newCatButton:SetHeight(10)
-	newCatButton:SetFrameLevel(1)
+ 
+	newCatButton:SetFrameLevel(vQueueFrame.catList:GetFrameLevel()+1)
 	newCatButton:EnableMouse(false)
 	newCatButton:SetPoint("TOPLEFT", vQueueFrame.catList, "TOPLEFT",  2, tablelength(catListButtons)*-10)
 	table.insert(catListButtons, tablelength(catListButtons), newCatButton)
@@ -1736,19 +1956,19 @@ function vQueue_createCategories(textKey)
 		end
 		if type(args[1]) == "string" then
 			local dropedItemFrame = CreateFrame("Button", "vQueueButton", vQueueFrame.catList)
-			dropedItemFrame:SetFont("Fonts\\FRIZQT__.TTF", 8)
-			dropedItemFrame:SetText(args[1] .. "(" .. tostring(tablelength(groups[args[2]])) .. ")")
+			dropedItemFrame:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 8)
+			dropedItemFrame:SetText(args[1] .. ( tablelength(groups[args[2]]) > 0 and " [" ..  tostring(tablelength(groups[args[2]])) .. "]" or ""))
 			dropedItemFrame:SetHighlightTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 			dropedItemFrame:SetWidth(dropedItemFrame:GetTextWidth())
 			dropedItemFrame:SetHeight(8)
-			dropedItemFrame:SetFrameLevel(1)
+			dropedItemFrame:SetFrameLevel(vQueueFrame.catList:GetFrameLevel()+1)
 			dropedItemFrame:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 			dropedItemFrame:SetPoint("TOPLEFT", vQueueFrame.catList, "TOPLEFT",  12, tablelength(catListButtons)*-10)
 			dropedItemFrame:SetScript("OnMouseDown", function()
 				vQueueFrame.catListHighlight:SetParent(this)
 				vQueueFrame.catListHighlight:SetPoint("LEFT", this, "LEFT", -11, 0)
 				vQueueFrame.catListHighlight:Show()
-				isWaitListShown = false
+				vQueueDB.isWaitListShown = false
 				vQueueFrame.hostTitle:Hide()
 				vQueueFrame.hostTitleRole:Hide()
 				vQueueFrame.hostTitleClass:Hide()
@@ -1763,13 +1983,13 @@ function vQueue_createCategories(textKey)
 				vQueueFrame.hostTitleFindLevel:Show()
 				vQueueFrame.hostTitleFindSize:Show()
 				vQueueFrame.hostTitleFindRoles:Show()
-				if not isHost then realHostedCategory = args[1] end
+				if not vQueueDB.isHost then realHostedCategory = args[1] end
 				local args = {}
 				for k, v in pairs(categories) do
 					for i, item in v do
 						if type(item) == "string" then
 							local tArgs = split(item, "\:")
-							if tArgs[1] == split(this:GetText(), "%(")[1] then 
+							if tArgs[1] == trim(split(this:GetText(), "%[")[1]) then 
 								args = tArgs
 								break
 							end
@@ -1791,7 +2011,7 @@ function vQueue_createCategories(textKey)
 				vQueueFrame.hostlistDps:Show()
 				vQueueFrame.hostlistTank:Show()
 				vQueueFrame.hostlistRoleText:Show()
-				if not isHost and not vQueueFrame.hostlistCreateButton:IsShown() then
+				if not vQueueDB.isHost and not vQueueFrame.hostlistCreateButton:IsShown() then
 					vQueueFrame.hostlistHostButton:Show()
 				else
 					vQueueFrame.hostlistHostButton:Hide()
@@ -1800,7 +2020,7 @@ function vQueue_createCategories(textKey)
 				scrollbar:SetMinMaxValues(1, tablelength(groups[selectedQuery])-10)
 			end)
 			dropedItemFrame:SetScript("OnShow", function()
-				if vQueueFrame.catListHighlight:GetParent() and split(vQueueFrame.catListHighlight:GetParent():GetText(), "%(")[1] == split(this:GetText(), "%(")[1] then
+				if vQueueFrame.catListHighlight:GetParent() and trim(split(vQueueFrame.catListHighlight:GetParent():GetText(), "%[")[1]) == trim(split(this:GetText(), "%[")[1]) then
 					vQueueFrame.catListHighlight:SetParent(this)
 					vQueueFrame.catListHighlight:SetPoint("LEFT", this, "LEFT", -11, 0)
 					vQueueFrame.catListHighlight:Show()
@@ -1817,7 +2037,7 @@ function vQueue_addToWaitList(playerinfo)
 	local args = split(playerinfo, "\:")
 	if groups["waitlist"][args[1]] == nil then
 		newWaitEntry = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
-		newWaitEntry:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newWaitEntry:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newWaitEntry:SetText(args[1])
 		newWaitEntry:SetTextColor(vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3])
 		newWaitEntry:SetHighlightTextColor(1, 1, 0)
@@ -1825,7 +2045,7 @@ function vQueue_addToWaitList(playerinfo)
 		newWaitEntry:SetWidth(newWaitEntry:GetTextWidth())
 		newWaitEntry:SetHeight(10)
 		newWaitEntry:EnableMouse(true)
-		newWaitEntry:SetFrameLevel(1)
+		newWaitEntry:SetFrameLevel(vQueueFrame.hostlist:GetFrameLevel()+1)
 		newWaitEntry:SetScript("OnEnter", function()
 			if playerMessages[this:GetText()] ~= nil then
 				local playerargs = split(playerMessages[this:GetText()], "\:")
@@ -1850,7 +2070,7 @@ function vQueue_addToWaitList(playerinfo)
 			diffColor = {vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3]}
 		end
 		newWaitEntryLvl = newWaitEntry:CreateFontString(nil, "ARTWORK")
-		newWaitEntryLvl:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newWaitEntryLvl:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newWaitEntryLvl:SetText(args[2])
 		newWaitEntryLvl:SetPoint("LEFT", newWaitEntry, "LEFT", 155, 0)
 		newWaitEntryLvl:SetWidth(newWaitEntryLvl:GetStringWidth())
@@ -1864,7 +2084,7 @@ function vQueue_addToWaitList(playerinfo)
 			classColor = {vQueueColors["WHITE"][1], vQueueColors["WHITE"][2], vQueueColors["WHITE"][3]}
 		end
 		newWaitEntryClass = newWaitEntry:CreateFontString(nil, "ARTWORK")
-		newWaitEntryClass:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newWaitEntryClass:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newWaitEntryClass:SetText(args[3])
 		newWaitEntryClass:SetPoint("LEFT", newWaitEntry, "LEFT", 245, 0)
 		newWaitEntryClass:SetWidth(newWaitEntryClass:GetStringWidth())
@@ -1879,8 +2099,8 @@ function vQueue_addToWaitList(playerinfo)
 		
 		newWaitEntryInvite = vQueue_newButton(newWaitEntry, 10)
 		newWaitEntryInvite:SetPoint("RIGHT", newWaitEntryBg, "RIGHT", -20, 0)
-		newWaitEntryInvite:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
-		newWaitEntryInvite:SetText("invite")
+		newWaitEntryInvite:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
+		newWaitEntryInvite:SetText(L["invite"])
 		newWaitEntryInvite:SetWidth(newWaitEntryInvite:GetTextWidth()+5)
 		newWaitEntryInvite:SetScript("OnClick", function()
 			InviteByName(this:GetParent():GetText())
@@ -1909,7 +2129,7 @@ function vQueue_addToWaitList(playerinfo)
 					if seconds < 10 then
 						seconds = "0" .. tostring(seconds)
 					end
-					this:SetText("invite(" .. tostring(minute) .. ":" .. tostring(seconds)..")" )
+					this:SetText(L["invite"] .. "(" .. tostring(minute) .. ":" .. tostring(seconds)..")" )
 					this:SetWidth(this:GetTextWidth()+5)
 				end
 			end
@@ -1932,10 +2152,10 @@ function vQueue_addToWaitList(playerinfo)
 				end
 			end
 		end)
-		if not vQueueFrame:IsShown() then minimapButton.notifyText:Show() end
+		if not vQueueFrame:IsShown() then vQueueminimapButton.notifyText:Show() end
 		groups["waitlist"][args[1]] = newWaitEntry
 	end
-	if selectedQuery == "waitlist" and isWaitListShown then 
+	if selectedQuery == "waitlist" and vQueueDB.isWaitListShown then 
 		groups["waitlist"][args[1]]:Show()
 		vQueue_UpdateHostScroll(scrollbar:GetValue())
 		scrollbar:SetMinMaxValues(1, tablelength(groups[selectedQuery])-10)
@@ -1943,10 +2163,10 @@ function vQueue_addToWaitList(playerinfo)
 end
 
 function vQueue_WhoSorting()
-	for i=1, GetNumWhoResults() do
+--[[	for i=1, GetNumWhoResults() do
 		name, guild, level, race, class, zone, classFileName, sex = GetWhoInfo(i)
 		if leaderMessages[name] ~= nil and level > 40 and groups["dead"][name] ~= nil then
-			groups["dm"][name] = groups["dead"][name]
+			groups["dem"][name] = groups["dead"][name]
 			if selectedQuery == "dead" then groups["dead"][name]:Hide() end
 			groups["dead"][name] = nil	
 			local thisframe, bg, name, level = groups["dm"][name]:GetRegions()
@@ -1964,6 +2184,7 @@ function vQueue_WhoSorting()
 			vQueue_ShowGroups(selectedCat, selectedCat)
 		end
 	end
+]]
 end
 
 -- return the first integer index holding the value
@@ -2028,6 +2249,7 @@ function vQueue_UpdateHostScroll(value)
 end
 
 function getDifficultyColor(levelKey, playerLevel)
+	if not levelKey then return {1,1,0}; end
 	local color = {}
 	if (levelKey - playerLevel) >= 5 then
 		color[1] = 1
@@ -2055,15 +2277,15 @@ end
 
 function getClassColor(class)
 	local classColor = {}
-	classColor["Druid"] = {1, 0.49, 0.04}
-	classColor["Hunter"] = {0.67, 0.83, 0.45}
-	classColor["Mage"] = {0.41, 0.80, 0.94}
-	classColor["Paladin"] = {0.96, 0.55, 0.73}
-	classColor["Priest"] = {1, 1, 1}
-	classColor["Rogue"] = {1, 0.96, 0.41}
-	classColor["Shaman"] = {0, 0.44, 0.87}
-	classColor["Warlock"] = {0.58, 0.51, 0.79}
-	classColor["Warrior"] = {0.78, 0.61, 0.43}
+	classColor[BC["Druid"]] = {1, 0.49, 0.04}
+	classColor[BC["Hunter"]] = {0.67, 0.83, 0.45}
+	classColor[BC["Mage"]] = {0.41, 0.80, 0.94}
+	classColor[BC["Paladin"]] = {0.96, 0.55, 0.73}
+	classColor[BC["Priest"]] = {1, 1, 1}
+	classColor[BC["Rogue"]] = {1, 0.96, 0.41}
+	classColor[BC["Shaman"]] = {0, 0.44, 0.87}
+	classColor[BC["Warlock"]] = {0.58, 0.51, 0.79}
+	classColor[BC["Warrior"]] = {0.78, 0.61, 0.43}
 	for k, v in pairs(classColor) do
 		if k == class then return v end
 	end
@@ -2084,7 +2306,7 @@ function vQueue_addToGroup(category, groupinfo)
 	end
 	if groups[category][args[2]] == nil then
 		newHostEntry = CreateFrame("Button", "vQueueButton", vQueueFrame.hostlist)
-		newHostEntry:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntry:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newHostEntry:SetText(args[1])
 		newHostEntry:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 		newHostEntry:SetHighlightTextColor(1, 1, 0)
@@ -2092,13 +2314,16 @@ function vQueue_addToGroup(category, groupinfo)
 		newHostEntry:SetWidth(newHostEntry:GetTextWidth())
 		newHostEntry:SetHeight(10)
 		newHostEntry:EnableMouse(true)
-		newHostEntry:SetFrameLevel(1)
+		newHostEntry:SetFrameLevel(vQueueFrame.hostlist:GetFrameLevel()+1)
 		newHostEntry:SetScript("OnEnter", function()
 			local thisframe, bg, name, level, size, tank, healer, damage = this:GetRegions()
 			if leaderMessages[name:GetText()] ~= nil then
 				local leaderargs = split(leaderMessages[name:GetText()], "\:")
 				groupToolTip:SetOwner( this, "ANCHOR_CURSOR" );
-				groupToolTip:AddLine(leaderargs[1], 1, 1, 1, 1)
+				groupToolTip:AddLine("Leader: " .. name:GetText(), 1, 1, 1, 1)
+				groupToolTip:AddLine("Need Level: " .. level:GetText(), 1, 1, 1, 1)
+				groupToolTip:AddLine("Message: ", 1, 1, 1, 1)
+				groupToolTip:AddLine(leaderargs[1], vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3], 1)
 				groupToolTip:Show()
 			end
 		end)
@@ -2117,7 +2342,8 @@ function vQueue_addToGroup(category, groupinfo)
 						if seconds < 10 then
 							seconds = "0" .. tostring(seconds)
 						end
-						this:SetText("(Mouseover to see chat message) " .. tostring(minute) .. ":" .. tostring(seconds) )
+						local msg = string.len(timeSplit[1])>31 and (string.sub(timeSplit[1],1,30).."...") or timeSplit[1]
+						this:SetText(msg.." " .. tostring(minute) .. ":" .. tostring(seconds) )
 						this:SetWidth(this:GetTextWidth())
 					end
 				end
@@ -2137,7 +2363,7 @@ function vQueue_addToGroup(category, groupinfo)
 		end
 		
 		newHostEntryName = newHostEntry:CreateFontString(nil, "ARTWORK")
-		newHostEntryName:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntryName:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newHostEntryName:SetText(args[2])
 		newHostEntryName:SetPoint("LEFT", newHostEntry, "LEFT", 211, 0)
 		newHostEntryName:SetWidth(newHostEntryName:GetStringWidth())
@@ -2146,7 +2372,7 @@ function vQueue_addToGroup(category, groupinfo)
 		
 		local diffColor = getDifficultyColor(tonumber(args[3]), UnitLevel("player"))
 		newHostEntryLevel = newHostEntry:CreateFontString(nil, "ARTWORK")
-		newHostEntryLevel:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntryLevel:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newHostEntryLevel:SetText(args[3])
 		newHostEntryLevel:SetPoint("LEFT", newHostEntry, "LEFT", 287, 0)
 		newHostEntryLevel:SetWidth(newHostEntryLevel:GetStringWidth())
@@ -2154,7 +2380,7 @@ function vQueue_addToGroup(category, groupinfo)
 		newHostEntryLevel:SetHeight(10)
 		
 		newHostEntrySize = newHostEntry:CreateFontString(nil, "ARTWORK")
-		newHostEntrySize:SetFont("Interface\\AddOns\\vQueue\\media\\anonpro.TTF", 10)
+		newHostEntrySize:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", 10)
 		newHostEntrySize:SetText(args[4])
 		newHostEntrySize:SetPoint("LEFT", newHostEntry, "LEFT", 325, 0)
 		newHostEntrySize:SetWidth(newHostEntrySize:GetStringWidth())
@@ -2162,57 +2388,72 @@ function vQueue_addToGroup(category, groupinfo)
 		newHostEntrySize:SetHeight(10)
 		
 		newHostEntryTank = newHostEntry:CreateTexture(nil, "ARTWORK")
-		newHostEntryTank:SetPoint("LEFT", newHostEntry, "LEFT", 360, 0)
+		newHostEntryTank:SetPoint("LEFT", newHostEntry, "LEFT", 350, 0)
 		newHostEntryTank:SetTexture("Interface\\AddOns\\vQueue\\media\\Tank")
 		newHostEntryTank:SetWidth(16)
 		newHostEntryTank:SetHeight(16)
 		if args[7] == "Tank" then newHostEntryTank:Show() else newHostEntryTank:Hide() end
 		
 		newHostEntryHealer = newHostEntry:CreateTexture(nil, "ARTWORK")
-		newHostEntryHealer:SetPoint("LEFT", newHostEntry, "LEFT", 376, 0)
+		newHostEntryHealer:SetPoint("LEFT", newHostEntry, "LEFT", 366, 0)
 		newHostEntryHealer:SetTexture("Interface\\AddOns\\vQueue\\media\\Healer")
 		newHostEntryHealer:SetWidth(16)
 		newHostEntryHealer:SetHeight(16)
 		if args[5] == "Healer" then newHostEntryHealer:Show() else newHostEntryHealer:Hide() end
 		
 		newHostEntryDamage = newHostEntry:CreateTexture(nil, "ARTWORK")
-		newHostEntryDamage:SetPoint("LEFT", newHostEntry, "LEFT", 392, 0)
+		newHostEntryDamage:SetPoint("LEFT", newHostEntry, "LEFT", 382, 0)
 		newHostEntryDamage:SetTexture("Interface\\AddOns\\vQueue\\media\\Damage")
 		newHostEntryDamage:SetWidth(16)
 		newHostEntryDamage:SetHeight(16)
 		if args[6] == "Damage" then newHostEntryDamage:Show() else newHostEntryDamage:Hide() end
 		
+		deleteFromListButton = vQueue_newButton(newHostEntry, 9)   -- LaYt
+		deleteFromListButton:SetPoint("RIGHT", newHostEntryBg, "RIGHT", -3, 0)
+		deleteFromListButton:SetText("X")
+		deleteFromListButton:SetTextColor(255,0,0)
+		deleteFromListButton:SetWidth(deleteFromListButton:GetTextWidth()+5)
+
+		deleteFromListButton:SetScript("OnClick", function() 
+			local thisframe, bg, name, level, size, tank, healer, damage = this:GetParent():GetRegions()
+			local leaderArgs = split(leaderMessages[name:GetText()], "\:")
+			leaderMessages[name:GetText()] = leaderArgs[1]..":"..leaderArgs[2]..":"..tostring(GetTime()-310)
+			vQueueDB.bannedLeaders[name:GetText()] = GetTime()
+			DEFAULT_CHAT_FRAME:AddMessage("vQueue: LFM from "..name:GetText().." is now ignored for 5 min.")
+			idleMessage = 31
+		end)
+		
 		waitListButton = vQueue_newButton(newHostEntry, 9)
-		waitListButton:SetPoint("RIGHT", newHostEntryBg, "RIGHT", -3, 0)
+		waitListButton:SetPoint("RIGHT", newHostEntryBg, "RIGHT", 0-waitListButton:GetTextWidth()-15, 0)
 		if setContains(waitingList, args[2]) then
-			waitListButton:SetText("waiting")
+			waitListButton:SetText(L["waiting"])
 		else
-			waitListButton:SetText("wait list")
+			waitListButton:SetText(L["wait list"])
 		end
 		if leaderMessages[args[2]] ~= nil and newHostEntrySize:GetText() == "?" then
-			waitListButton:SetText("reply")
+			waitListButton:SetText(L["reply"])
 		end
 		waitListButton:SetWidth(waitListButton:GetTextWidth()+5)
 		waitListButton:SetScript("OnClick", function()
-			if GetNumPartyMembers() > 0 and this:GetText() ~= "reply" then 
-				vQueueFrame.hostlistRoleText:SetText("(Leave group before queueing for other groups)")
+			if GetNumPartyMembers() > 0 and this:GetText() ~= L["reply"] then 
+				vQueueFrame.hostlistRoleText:SetText(L["(Leave group before queueing for other groups)"])
 				return 
 			end
 			local thisframe, bg, name, level, size, tank, healer, damage = this:GetParent():GetRegions()
-			if this:GetText() == "wait list" then
+			if this:GetText() == L["wait list"] then
 				if tonumber(level:GetText()) > UnitLevel("player") then
-					vQueueFrame.hostlistRoleText:SetText("(You do not meet the level requirements for this group)")
+					vQueueFrame.hostlistRoleText:SetText(L["(You do not meet the level requirements for this group)"])
 					return
 				end
-				this:SetText("waiting")
-				vQueue_SlashCommandHandler("request " .. name:GetText())
+				this:SetText(L["waiting"])
+				vQueue_SlashCommandHandler(L["request "] .. name:GetText())
 				if not setContains(waitingList, name:GetText()) then
 					addToSet(waitingList, name:GetText())
 				end
 			end
-			if this:GetText() == "reply" then
+			if this:GetText() == L["reply"] then
 				vQueueFrame.replyFrameTo:SetText(name:GetText())
-				vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. tostring(UnitClass("player")))
+				vQueueFrame.replyFrameMsg:SetText("(vQueue) Lvl " .. tostring(UnitLevel("player")) .. " " .. selectedRole .. " " .. vQueueDB.class)
 				vQueueFrame.replyFrame:Show()
 			end
 		end)
@@ -2232,7 +2473,7 @@ function vQueue_addToGroup(category, groupinfo)
 		if args[5] == "Healer" then healer:Show() else healer:Hide() end
 		if args[6] == "Damage" then damage:Show() else damage:Hide() end
 	end
-	if category == selectedQuery and not isWaitListShown then 
+	if category == selectedQuery and not vQueueDB.isWaitListShown then 
 		groups[category][args[2]]:Show()
 		vQueue_UpdateHostScroll(scrollbar:GetValue())
 		scrollbar:SetMinMaxValues(1, tablelength(groups[selectedQuery])-10)
@@ -2256,12 +2497,13 @@ end
 function refreshCatList(cat)
 	for kChild, child in ipairs(catListButtons) do
 		local args = {}
-		local realText = split(child:GetText(), "%(")
+		local realText = split(child:GetText(), "%[")
+		realText = trim (realText[1])
 		for k, v in pairs(categories) do
 			for i, item in v do
 				if type(item) == "string" then
 					local tArgs = split(item, "\:")
-					if tArgs[1] == realText[1] and tArgs[2] == cat then 
+					if tArgs[1] == realText and tArgs[2] == cat then 
 						args = tArgs
 						break
 					end
@@ -2269,7 +2511,7 @@ function refreshCatList(cat)
 			end
 		end
 		if args[2] ~= nil and type(args[2]) == "string" then
-			child:SetText(realText[1] .. "(" .. tablelength(groups[args[2]]) .. ")")
+			child:SetText(realText .. ( tablelength(groups[args[2]]) > 0 and " [" ..  tostring(tablelength(groups[args[2]])) .. "]" or ""))
 			child:SetWidth(child:GetTextWidth())
 			break
 		end
@@ -2278,7 +2520,7 @@ end
 
 function vQueue_newButton(parentFrame, FontSize)
 	newButton = CreateFrame("Button", "vQueueButton", parentFrame)
-	newButton:SetFont("Fonts\\FRIZQT__.TTF", FontSize)
+	newButton:SetFont("Interface\\AddOns\\vQueue\\media\\ARIALN.TTF", FontSize)
 	newButton:SetTextColor(vQueueColors["YELLOW"][1], vQueueColors["YELLOW"][2], vQueueColors["YELLOW"][3])
 	newButton:SetNormalTexture("Interface\\AddOns\\vQueue\\media\\button")
 	newButton:SetHighlightTexture("Interface\\BUTTONS\\CheckButtonHilight")
@@ -2308,16 +2550,16 @@ function vQueue_SlashCommandHandler( msg )
 		args = split(msg, "\%s")
 	end
 	if args[1] == "host" and args[2] ~= nil then
-		isHost = true
-		DEFAULT_CHAT_FRAME:AddMessage("Now hosting for " .. hostedCategory)
+		vQueueDB.isHost = true
+		DEFAULT_CHAT_FRAME:AddMessage(L["Now hosting for "] .. hostedCategory)
 		idleMessage = 25
 	elseif args[1] == "lfg" and args[2] ~= nil then
 		if not setContains(chatQueue, args[2]) then
 			addToSet(chatQueue, "lfg " .. args[2] .. "-CHANNEL-" .. tostring(GetChannelName(channelName)))
 		end
 	elseif args[1] == "request" and args[2] ~= nil then
-		if not setContains(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. UnitClass("player") .. " " .. selectedRole .. "-WHISPER-" .. args[2]) then
-			addToSet(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. UnitClass("player") .. " " .. selectedRole .. "-WHISPER-" .. args[2])
+		if not setContains(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. vQueueDB.class .. " " .. selectedRole .. "-WHISPER-" .. args[2]) then
+			addToSet(chatQueue, "vqrequest " .. UnitLevel("player") .. " " .. vQueueDB.class .. " " .. selectedRole .. "-WHISPER-" .. args[2])
 		end
 	elseif args[1] == "testgroups" then
 		for i=1, 100 do
@@ -2326,15 +2568,15 @@ function vQueue_SlashCommandHandler( msg )
 		refreshCatList("misc")
 	elseif args[1] == "testplayers" then
 		local classes = {}
-		classes[1] = "Druid"
-		classes[2] = "Hunter"
-		classes[3] = "Mage"
-		classes[4] = "Paladin"
-		classes[5] = "Priest"
-		classes[6] = "Rogue"
-		classes[7] = "Shaman"
-		classes[8] = "Warlock"
-		classes[9] = "Warrior"
+		classes[1] = BC["Druid"]
+		classes[2] = BC["Hunter"]
+		classes[3] = BC["Mage"]
+		classes[4] = BC["Paladin"]
+		classes[5] = BC["Priest"]
+		classes[6] = BC["Rogue"]
+		classes[7] = BC["Shaman"]
+		classes[8] = BC["Warlock"]
+		classes[9] = BC["Warrior"]
 		local roles = {}
 		roles[1] = "Healer"
 		roles[2] = "Damage"
@@ -2350,12 +2592,16 @@ function vQueue_OnUpdate()
 	if whoRequestTimer > 2 then
 		whoRequestTimer = 0
 		if fixingChat then
-			JoinChannelByName("General")
-			JoinChannelByName("Trade")
-			JoinChannelByName("LocalDefense")
-			JoinChannelByName("LookingForGroup")
-			JoinChannelByName("World")
-			JoinChannelByName("vQueue")
+			DEFAULT_CHAT_FRAME:AddMessage(L["vQueue: JoinChannelByName not working properly."])
+			DEFAULT_CHAT_FRAME:AddMessage(L["vQueue: So you need join channels manually or in macro: 1 channel per macro"])
+			DEFAULT_CHAT_FRAME:AddMessage(L["vQueue: (/join lookingforgroup) (/join world) (/join china) - PS: dont use caps"])
+			DEFAULT_CHAT_FRAME:AddMessage(L["vQueue: after it reopen vQueue"])
+			JoinChannelByName(L["General"])
+			JoinChannelByName(L["Trade"])
+			JoinChannelByName(L["LocalDefense"])
+--			JoinChannelByName("LookingForGroup")
+--			JoinChannelByName("world")
+--			JoinChannelByName(channelName)
 			fixingChat = false
 		end
 		if tablelength(whoRequestList) > 0 and not FriendsFrame:IsShown() then
@@ -2374,26 +2620,35 @@ function vQueue_OnUpdate()
 	idleMessage = idleMessage + arg1
 	if idleMessage > 30 and tablelength(chatQueue) == 0 then
 		idleMessage = 0
-		if (isFinding or isHost) and GetChannelName(channelName) < 1 then
+		if (isFinding or vQueueDB.isHost) and GetChannelName(channelName) < 1 then
 			JoinChannelByName(channelName)
-		elseif GetChannelName(channelName) > 0 and (isHost == false and isFinding == false) then
+		elseif GetChannelName(channelName) > 0 and (vQueueDB.isHost == false and isFinding == false) then
 			LeaveChannelByName(channelName)
 		end
-		if isHost then
+		if vQueueDB.isHost then
 			local groupSize = GetNumRaidMembers()
 			if groupSize == 0 then groupSize = GetNumPartyMembers() end
 			groupSize = groupSize + 1
 			addToSet(chatQueue, "vqgroup " .. hostedCategory .. " " .. tostring(hostOptions[1]) .. " " .. groupSize .. " " .. tostring(hostOptions[2]) .. " " .. tostring(hostOptions[3]) .. " " .. tostring(hostOptions[4]) .. " " .. tostring(2) .. " :" .. tostring(hostOptions[0]) .. "-CHANNEL-" .. tostring(GetChannelName(channelName)))
+		end
+		-- Remove baned Leaders
+		
+		for k,v in pairs(vQueueDB.bannedLeaders) do
+			if GetTime() - v > 300 then
+				vQueueDB.bannedLeaders[k] = nil
+			end
+		
 		end
 		
 		-- Removes entries after 5 minutes of no updates
 		for k, v in pairs(leaderMessages) do
 			if v ~= nil then
 				local leaderArgs = split(v, "\:")
-				local timeDiff = GetTime() - tonumber(leaderArgs[3])
+				local timeDiff
 				if leaderArgs[3] ~= nil and type(tonumber(leaderArgs[3])) == "number" then
+					timeDiff = GetTime() - tonumber(leaderArgs[3])
 					if timeDiff > (300) then -- delete chat entries after 5 minutes of no updates					
-						if groups[leaderArgs[2]][k] ~= nil then
+						if groups[leaderArgs[2]] and groups[leaderArgs[2]][k] ~= nil then
 							groups[leaderArgs[2]][k]:Hide()
 							groups[leaderArgs[2]][k] = nil
 							leaderMessages[k] = nil
@@ -2402,7 +2657,7 @@ function vQueue_OnUpdate()
 						end
 					end
 					if timeDiff > (40) then -- remove vQueue groups after 40 seconds
-						if groups[leaderArgs[2]][k] ~= nil then
+						if groups[leaderArgs[2]] and groups[leaderArgs[2]][k] ~= nil then
 							local thisframe, bg, name, level, size, tank, healer, damage = groups[leaderArgs[2]][k]:GetRegions()
 							if size:GetText() ~= "?" then
 								groups[leaderArgs[2]][k]:Hide()
